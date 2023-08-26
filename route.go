@@ -42,9 +42,6 @@ func newRoute[C any](method string, path string, handler Handler[C]) *route[C] {
 }
 
 func normalizeRoutePath(path string) []string {
-	if strings.HasPrefix(path, "/") {
-		path = strings.TrimPrefix(path, "/")
-	}
-
+	path = strings.TrimPrefix(path, "/")
 	return strings.Split(path, "/")
 }
