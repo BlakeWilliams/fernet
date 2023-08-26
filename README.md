@@ -32,7 +32,7 @@ func main() {
   })
 
 // Use is used to add fernet based middleware to the application.
-  app.Use(func(w fernet.ResponseWriter, r *fernet.Request[AppData], next fernet.Handler) {
+  app.Use(func(w fernet.ResponseWriter, r *fernet.Request[AppData], next fernet.Handler[AppData]) {
     // Do something before the request is handled.
     next(w, r)
     // Do something after the request is handled.

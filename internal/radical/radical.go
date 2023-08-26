@@ -69,6 +69,9 @@ func (n *Node[T]) Add(segments []string, value T) {
 	currentSegment.isSet = true
 }
 
+// Value searches the tree for a node matching the provided segments. If a match
+// is found it returns true and the associated value T. If a match is not found
+// it returns false and the zero value of T.
 func (n *Node[T]) Value(segments []string) (bool, T) {
 	currentNode := n
 	for _, segment := range segments {
