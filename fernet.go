@@ -12,8 +12,10 @@ type (
 
 	// Router represents the primary router for the application.
 	Router[RequestData any] struct {
-		routes []*route[RequestData]
-		tree   *radical.Node[*route[RequestData]]
+		routes     []*route[RequestData]
+		tree       *radical.Node[*route[RequestData]]
+		metal      []func(http.ResponseWriter, *http.Request, http.Handler)
+		middleware []func(Response, *Request[RequestData], Handler[RequestData])
 	}
 )
 
@@ -25,8 +27,10 @@ type (
 // or other data needed by the controller, handler, template, or other layers.
 func New[RequestData any]() *Router[RequestData] {
 	return &Router[RequestData]{
-		tree:   radical.New[*route[RequestData]](),
-		routes: make([]*route[RequestData], 0),
+		tree:       radical.New[*route[RequestData]](),
+		routes:     make([]*route[RequestData], 0),
+		metal:      make([]func(http.ResponseWriter, *http.Request, http.Handler), 0),
+		middleware: make([]func(Response, *Request[RequestData], Handler[RequestData]), 0),
 	}
 }
 
@@ -67,28 +71,67 @@ func (r *Router[RequestData]) Delete(path string, handler Handler[RequestData]) 
 	r.Match(http.MethodDelete, path, handler)
 }
 
+// UseMetal registers an http package based middleware that is run before each request
+func (r *Router[RequestData]) UseMetal(fn func(http.ResponseWriter, *http.Request, http.Handler)) {
+	r.metal = append(r.metal, fn)
+}
+
+func (r *Router[RequestData]) Use(fn func(Response, *Request[RequestData], Handler[RequestData])) {
+	r.middleware = append(r.middleware, fn)
+}
+
 // ServeHTTP implements the http.Handler interface.
-func (r *Router[RequestData]) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	request := &Request[RequestData]{req: req}
-	response := &response{header: make(http.Header)}
+func (r *Router[RequestData]) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	// Run fernet middleware and call route handler
+	handler := func(rw http.ResponseWriter, req *http.Request) {
+		request := &Request[RequestData]{req: req}
+		response := &response{header: make(http.Header)}
 
-	method := request.Method()
-	normalizedPath := normalizeRoutePath(request.URL().Path)
-	lookup := []string{method}
-	lookup = append(lookup, normalizedPath...)
+		method := request.Method()
+		normalizedPath := normalizeRoutePath(request.URL().Path)
+		lookup := []string{method}
+		lookup = append(lookup, normalizedPath...)
 
-	ok, value := r.tree.Value(lookup)
-	if !ok {
-		res.WriteHeader(http.StatusNotFound)
-		return
+		ok, value := r.tree.Value(lookup)
+		if !ok {
+			rw.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		handler := value.handler
+
+		for i := len(r.middleware) - 1; i >= 0; i-- {
+			currentHandler := handler
+			middleware := r.middleware[i]
+
+			handler = func(res Response, req *Request[RequestData]) {
+				middleware(res, req, currentHandler)
+			}
+		}
+
+		handler(response, request)
+
+		for k, v := range response.header {
+			rw.Header()[k] = v
+		}
+
+		if response.status == 0 {
+			rw.WriteHeader(http.StatusOK)
+		} else {
+			rw.WriteHeader(response.status)
+		}
+
+		_, _ = rw.Write(response.body)
 	}
 
-	value.handler(response, request)
+	for i := len(r.metal) - 1; i >= 0; i-- {
+		currentHandler := handler
+		metal := r.metal[i]
 
-	for k, v := range response.header {
-		res.Header()[k] = v
+		handler = func(rw http.ResponseWriter, r *http.Request) {
+			metal(rw, r, http.HandlerFunc(currentHandler))
+		}
 	}
 
-	res.WriteHeader(response.status)
-	_, _ = res.Write(response.body)
+	handler(rw, req)
 }
