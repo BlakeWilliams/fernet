@@ -1,6 +1,7 @@
 package fernet
 
 import (
+	"net/http"
 	"strings"
 )
 
@@ -11,14 +12,12 @@ type route[C any] struct {
 	handler Handler[C]
 }
 
-// Given a request, returns true if the route matches the request and false if
-// not.
-func (r *route[C]) IsMatch(req *Request[C]) (bool, map[string]string) {
-	if r.Method != req.Method() {
+func (r *route[C]) Match(req *http.Request) (bool, map[string]string) {
+	if r.Method != req.Method {
 		return false, nil
 	}
 
-	reqParts := strings.Split(req.URL().Path, "/")
+	reqParts := strings.Split(req.URL.Path, "/")
 
 	if len(r.parts) != len(reqParts) {
 		return false, nil

@@ -84,11 +84,8 @@ func (r *Router[RequestData]) Use(fn func(Response, *Request[RequestData], Handl
 func (r *Router[RequestData]) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// Run fernet middleware and call route handler
 	handler := func(rw http.ResponseWriter, req *http.Request) {
-		request := &Request[RequestData]{req: req}
-		response := &response{header: make(http.Header)}
-
-		method := request.Method()
-		normalizedPath := normalizeRoutePath(request.URL().Path)
+		method := req.Method
+		normalizedPath := normalizeRoutePath(req.URL.Path)
 		lookup := []string{method}
 		lookup = append(lookup, normalizedPath...)
 
@@ -97,6 +94,16 @@ func (r *Router[RequestData]) ServeHTTP(rw http.ResponseWriter, req *http.Reques
 			rw.WriteHeader(http.StatusNotFound)
 			return
 		}
+
+		ok, params := value.Match(req)
+		if !ok {
+			// This should never actually get hit in real code but would
+			// indicate a bug in the framework.
+			panic("route did not match request")
+		}
+
+		request := &Request[RequestData]{req: req, params: params}
+		response := &response{header: make(http.Header)}
 
 		handler := value.handler
 

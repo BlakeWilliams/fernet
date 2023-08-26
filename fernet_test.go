@@ -2,6 +2,7 @@ package fernet
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -134,4 +135,20 @@ func TestRouter_Before(t *testing.T) {
 
 	require.Equal(t, "bar", res.Header().Get("x-metal"))
 	require.Equal(t, "baz", res.Header().Get("x-before"))
+}
+
+func TestRouter_Params(t *testing.T) {
+	router := New[int]()
+
+	router.Get("/hello/:name", func(res Response, req *Request[int]) {
+		res.Write([]byte(
+			fmt.Sprintf("Hello %s", req.Param("name")),
+		))
+	})
+
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/hello/fox", nil)
+
+	router.ServeHTTP(res, req)
+	require.Equal(t, "Hello fox", res.Body.String())
 }
