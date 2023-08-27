@@ -179,7 +179,3 @@ func (r *Router[RequestData]) ServeHTTP(rw http.ResponseWriter, req *http.Reques
 
 	handler(rw, req)
 }
-
-func (r *Router[RequestData]) UseController(c Registerable[RequestData]) {
-	c.Register(r)
-}
