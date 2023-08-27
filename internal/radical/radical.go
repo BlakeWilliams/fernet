@@ -35,34 +35,34 @@ func (n *Node[T]) Add(segments []string, value T) {
 
 	for _, segment := range segments {
 		if strings.HasPrefix(segment, ":") {
-			child, ok := n.children[":named"]
+			child, ok := currentSegment.children[":named"]
 
 			if ok {
 				currentSegment = child
 				continue
 			}
 
-			n.children[":named"] = &Node[T]{
+			currentSegment.children[":named"] = &Node[T]{
 				segment:  ":named",
 				children: make(map[string]*Node[T], 0),
 			}
 
-			currentSegment = n.children[":named"]
+			currentSegment = currentSegment.children[":named"]
 			continue
 		}
 
-		child, ok := n.children[segment]
+		child, ok := currentSegment.children[segment]
 		if ok {
 			currentSegment = child
 			continue
 		}
 
-		n.children[segment] = &Node[T]{
+		currentSegment.children[segment] = &Node[T]{
 			segment:  segment,
 			children: make(map[string]*Node[T], 0),
 		}
 
-		currentSegment = n.children[segment]
+		currentSegment = currentSegment.children[segment]
 	}
 
 	currentSegment.value = value
@@ -75,13 +75,13 @@ func (n *Node[T]) Add(segments []string, value T) {
 func (n *Node[T]) Value(segments []string) (bool, T) {
 	currentNode := n
 	for _, segment := range segments {
-		child, ok := n.children[segment]
+		child, ok := currentNode.children[segment]
 		if ok {
 			currentNode = child
 			continue
 		}
 
-		child, ok = n.children[":named"]
+		child, ok = currentNode.children[":named"]
 		if !ok {
 			return false, reflect.Zero(reflect.TypeOf(n.value)).Interface().(T)
 		}

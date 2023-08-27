@@ -17,7 +17,7 @@ func (r *route[C]) Match(req *http.Request) (bool, map[string]string) {
 		return false, nil
 	}
 
-	reqParts := strings.Split(req.URL.Path, "/")
+	reqParts := normalizeRoutePath(req.URL.Path)
 
 	if len(r.parts) != len(reqParts) {
 		return false, nil
@@ -37,8 +37,15 @@ func (r *route[C]) Match(req *http.Request) (bool, map[string]string) {
 }
 
 func newRoute[C any](method string, path string, handler Handler[C]) *route[C] {
+	parts := normalizeRoutePath(path)
+
 	// TODO better support for `/`, remove double `//`
-	return &route[C]{Method: method, Raw: path, parts: strings.Split(path, "/"), handler: handler}
+	return &route[C]{
+		Method:  method,
+		Raw:     path,
+		parts:   parts,
+		handler: handler,
+	}
 }
 
 func normalizeRoutePath(path string) []string {

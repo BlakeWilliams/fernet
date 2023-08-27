@@ -17,7 +17,35 @@ type (
 		metal      []func(http.ResponseWriter, *http.Request, http.Handler)
 		middleware []func(Response, *Request[RequestData], Handler[RequestData])
 	}
+
+	// Routable is an interface that can be implemented by types that want to
+	// register routes with a router.
+	Routable[RequestData any] interface {
+		// Match registers a route with the given method and path
+		Match(method string, path string, fn Handler[RequestData])
+		// Get registers a GET route with the given path
+		Get(method string, fn Handler[RequestData])
+		// Post registers a POST route with the given path
+		Post(method string, fn Handler[RequestData])
+		// Put registers a PUT route with the given path
+		Put(method string, fn Handler[RequestData])
+		// Patch registers a PATCH route with the given path
+		Patch(method string, fn Handler[RequestData])
+		// Delete registers a DELETE route with the given path
+		Delete(method string, fn Handler[RequestData])
+
+		// Use registers a middleware function that is run before each request
+		// for this group and all groups below it.
+		Use(func(Response, *Request[RequestData], Handler[RequestData]))
+
+		// Group returns a new group based on this Routable. It will have its
+		// own middleware stack in addition to the middleware stack on the
+		// groups/router above it.
+		Group(prefix string) *Group[RequestData]
+	}
 )
+
+var _ Routable[int] = (*Router[int])(nil)
 
 // New returns a new router instance. It accepts a generic type for RequestData,
 // which is passed to each middleware and handler so that they can share data
@@ -76,8 +104,17 @@ func (r *Router[RequestData]) UseMetal(fn func(http.ResponseWriter, *http.Reques
 	r.metal = append(r.metal, fn)
 }
 
+// Use registers a middleware that will be run after the UseMetal middleware but
+// before the handler. Each middleware is passed the next Handler or middleware
+// in the stack. Not calling the next function will halt the middleware/handler chain.
 func (r *Router[RequestData]) Use(fn func(Response, *Request[RequestData], Handler[RequestData])) {
 	r.middleware = append(r.middleware, fn)
+}
+
+// Group returns a new route group with the given prefix. The group can define
+// its own middleware that will only be run for that group.
+func (r *Router[RequestData]) Group(prefix string) *Group[RequestData] {
+	return NewGroup[RequestData](r, prefix)
 }
 
 // ServeHTTP implements the http.Handler interface.
@@ -141,4 +178,8 @@ func (r *Router[RequestData]) ServeHTTP(rw http.ResponseWriter, req *http.Reques
 	}
 
 	handler(rw, req)
+}
+
+func (r *Router[RequestData]) UseController(c Registerable[RequestData]) {
+	c.Register(r)
 }
