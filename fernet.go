@@ -179,3 +179,15 @@ func (r *Router[RequestData]) ServeHTTP(rw http.ResponseWriter, req *http.Reques
 
 	handler(rw, req)
 }
+
+type Registerable[T any] interface {
+	Register(Routable[T])
+}
+
+// Register passes this routable to the provided registerable so that it can
+// register its own routes on the routable. This is useful for building
+// abstractions like controllers or packages that need to manage and register
+// their own routes/state.
+func (r *Router[RequestData]) Register(c Registerable[RequestData]) {
+	c.Register(r)
+}

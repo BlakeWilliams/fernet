@@ -45,3 +45,80 @@ func main() {
   app.ListenAndServe(":3200")
 }
 ```
+
+## Groups
+
+Groups are used to group routes together and apply middleware common only to those groups and subgroups
+
+```go
+type AppData struct {
+  currentUser *User
+}
+
+router := fernet.New[AppData]()
+
+authGroup := router.Group("")
+authGroup.Use(func(w fernet.ResponseWriter, r *fernet.Request[AppData], next fernet.Handler[AppData]) {
+  if r.AppData.currentUser == nil {
+    w.WriteHeader(http.StatusUnauthorized)
+    return
+  }
+
+  next(w, r)
+})
+
+adminGroup := authGroup.Group("/admin")
+adminGroup.Use(func(w fernet.ResponseWriter, r *fernet.Request[AppData], next fernet.Handler[AppData]) {
+  if r.AppData.currentUser == nil || r.AppData.currentUser.Role != "admin" {
+    w.WriteHeader(http.StatusUnauthorized)
+    return
+  }
+
+  next(w, r)
+})
+```
+
+## `Registrable` and Controllers
+
+Controllers are an often used pattern to group related routes together, typically with shared middleware and data requirements. Fernet provides a `Registrable` interface to make it easy to register controllers with your application.
+
+```go
+type AppData struct {
+  currentUser *User
+}
+
+type UsersController struct {
+  db *sql.DB
+}
+
+// Register is used to register the controller routes with the application. This
+// simple abstraction makes it easy to extend fernet and your routing layer.
+//
+// For example, you could create your own router type that wraps `app` and adds
+// behavior or encapsulates data.
+func (c *UsersController) Register(app *fernet.App[AppData]) {
+  app.Get("/users", c.Index)
+  app.Get("/users/:id", c.Show)
+}
+
+func (c *UsersController) Index(w fernet.ResponseWriter, r *fernet.Request[AppData]) {
+  // ...
+}
+
+func (c *UsersController) Show(w fernet.ResponseWriter, r *fernet.Request[AppData]) {
+  // ...
+}
+
+func main() {
+  app := fernet.New[AppData]()
+
+  db, err := sql.Open("postgres", "...")
+  if err != nil {
+    panic(err)
+  }
+
+  app.Register(&UsersController{db: db})
+
+  app.ListenAndServe(":3200")
+}
+```
