@@ -41,7 +41,7 @@ type (
 		// Group returns a new group based on this Routable. It will have its
 		// own middleware stack in addition to the middleware stack on the
 		// groups/router above it.
-		Group(prefix string) *Group[RequestData]
+		Group(prefix string) Routable[RequestData]
 	}
 )
 
@@ -113,7 +113,7 @@ func (r *Router[RequestData]) Use(fn func(Response, *Request[RequestData], Handl
 
 // Group returns a new route group with the given prefix. The group can define
 // its own middleware that will only be run for that group.
-func (r *Router[RequestData]) Group(prefix string) *Group[RequestData] {
+func (r *Router[RequestData]) Group(prefix string) Routable[RequestData] {
 	return NewGroup[RequestData](r, prefix)
 }
 
@@ -189,5 +189,6 @@ type Registerable[T any] interface {
 // abstractions like controllers or packages that need to manage and register
 // their own routes/state.
 func (r *Router[RequestData]) Register(c Registerable[RequestData]) {
-	c.Register(r)
+	// TODO: Add test for ensuring this does not leak middleware
+	c.Register(NewGroup[RequestData](r, ""))
 }
