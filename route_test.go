@@ -1,6 +1,7 @@
 package fernet
 
 import (
+	"context"
 	"net/http/httptest"
 	"testing"
 
@@ -93,7 +94,7 @@ func TestRouteMatching(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			req := httptest.NewRequest(tc.reqMethod, tc.reqPath, nil)
-			route := newRoute[any](tc.routeMethod, tc.routePath, func(Response, *Request[any]) {})
+			route := newRoute[*BasicReqContext](tc.routeMethod, tc.routePath, func(context.Context, *BasicReqContext) {})
 
 			got, params := route.Match(req)
 

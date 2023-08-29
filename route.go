@@ -5,11 +5,11 @@ import (
 	"strings"
 )
 
-type route[C any] struct {
+type route[T ReqRes] struct {
 	Method  string
 	Raw     string
 	parts   []string
-	handler Handler[C]
+	handler Handler[T]
 }
 
 func (r *route[C]) Match(req *http.Request) (bool, map[string]string) {
@@ -36,11 +36,11 @@ func (r *route[C]) Match(req *http.Request) (bool, map[string]string) {
 	return true, params
 }
 
-func newRoute[C any](method string, path string, handler Handler[C]) *route[C] {
+func newRoute[T ReqRes](method string, path string, handler Handler[T]) *route[T] {
 	parts := normalizeRoutePath(path)
 
 	// TODO better support for `/`, remove double `//`
-	return &route[C]{
+	return &route[T]{
 		Method:  method,
 		Raw:     path,
 		parts:   parts,

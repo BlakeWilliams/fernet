@@ -10,17 +10,17 @@ import (
 )
 
 func TestGroup(t *testing.T) {
-	router := New[int]()
+	router := New(WithBasicRequestContext)
 	group := router.Group("/api/")
 
-	handler := func(res Response, req *Request[int]) {
-		res.WriteStatus(http.StatusCreated)
-		res.Header().Set("Content-Type", "application/json")
-		res.Write([]byte(`{"foo": "bar"}`))
+	handler := func(ctx context.Context, r *BasicReqContext) {
+		r.ResponseWriter().Header().Set("Content-Type", "application/json")
+		r.ResponseWriter().WriteHeader(http.StatusCreated)
+		r.ResponseWriter().Write([]byte(`{"foo": "bar"}`))
 	}
 
 	tests := map[string]struct {
-		routerFn func(string, Handler[int])
+		routerFn func(string, Handler[*BasicReqContext])
 		method   string
 	}{
 		"GET":    {method: http.MethodGet, routerFn: group.Get},
@@ -47,38 +47,38 @@ func TestGroup(t *testing.T) {
 }
 
 func TestGroup_Middleware(t *testing.T) {
-	router := New[int]()
+	router := New(WithBasicRequestContext)
 	router.UseMetal(func(w http.ResponseWriter, r *http.Request, h http.Handler) {
 		ctx := context.WithValue(r.Context(), contextKey{}, "bar")
 		h.ServeHTTP(w, r.WithContext(ctx))
 	})
-	router.Use(func(res Response, req *Request[int], next Handler[int]) {
-		require.Equal(t, "bar", req.Context().Value(contextKey{}))
-		ctx := context.WithValue(req.Context(), beforeContextKey{}, "baz")
+	router.Use(func(ctx context.Context, r *BasicReqContext, next Handler[*BasicReqContext]) {
+		require.Equal(t, "bar", ctx.Value(contextKey{}))
+		ctx = context.WithValue(ctx, beforeContextKey{}, "baz")
 
-		next(res, req.WithContext(ctx))
+		next(ctx, r)
 	})
-	router.Use(func(res Response, req *Request[int], next Handler[int]) {
-		require.Equal(t, "bar", req.Context().Value(contextKey{}))
-		require.Equal(t, "baz", req.Context().Value(beforeContextKey{}))
-		res.Header().Set("x-metal", "bar")
-		res.Header().Set("x-before", "baz")
+	router.Use(func(ctx context.Context, r *BasicReqContext, next Handler[*BasicReqContext]) {
+		require.Equal(t, "bar", ctx.Value(contextKey{}))
+		require.Equal(t, "baz", ctx.Value(beforeContextKey{}))
+		r.ResponseWriter().Header().Set("x-metal", "bar")
+		r.ResponseWriter().Header().Set("x-before", "baz")
 
-		next(res, req)
+		next(ctx, r)
 	})
 
 	group := router.Group("/api")
 
-	group.Use(func(res Response, req *Request[int], next Handler[int]) {
-		require.Equal(t, "bar", req.Context().Value(contextKey{}))
-		require.Equal(t, "baz", req.Context().Value(beforeContextKey{}))
-		res.Header().Set("x-group", "yolo")
+	group.Use(func(ctx context.Context, r *BasicReqContext, next Handler[*BasicReqContext]) {
+		require.Equal(t, "bar", ctx.Value(contextKey{}))
+		require.Equal(t, "baz", ctx.Value(beforeContextKey{}))
+		r.ResponseWriter().Header().Set("x-group", "yolo")
 
-		next(res, req)
+		next(ctx, r)
 	})
 
-	group.Get("/foo", func(res Response, req *Request[int]) {
-		res.Write([]byte("Hello world"))
+	group.Get("/foo", func(ctx context.Context, r *BasicReqContext) {
+		r.ResponseWriter().Write([]byte("Hello world"))
 	})
 
 	res := httptest.NewRecorder()
@@ -91,23 +91,23 @@ func TestGroup_Middleware(t *testing.T) {
 }
 
 func TestGroup_NestedGroup(t *testing.T) {
-	router := New[int]()
+	router := New(WithBasicRequestContext)
 	group := router.Group("/api")
 	subgroup := group.Group("/v1")
 
-	group.Use(func(res Response, req *Request[int], next Handler[int]) {
-		ctx := context.WithValue(req.Context(), contextKey{}, "foo")
-		next(res, req.WithContext(ctx))
+	group.Use(func(ctx context.Context, r *BasicReqContext, next Handler[*BasicReqContext]) {
+		ctx = context.WithValue(ctx, contextKey{}, "foo")
+		next(ctx, r)
 	})
 
-	subgroup.Use(func(res Response, req *Request[int], next Handler[int]) {
-		require.Equal(t, "foo", req.Context().Value(contextKey{}))
-		res.Header().Set("x-subgroup", "v1")
-		next(res, req)
+	subgroup.Use(func(ctx context.Context, r *BasicReqContext, next Handler[*BasicReqContext]) {
+		require.Equal(t, "foo", ctx.Value(contextKey{}))
+		r.ResponseWriter().Header().Set("x-subgroup", "v1")
+		next(ctx, r)
 	})
 
-	subgroup.Get("/foo", func(res Response, req *Request[int]) {
-		res.Write([]byte("Hello world"))
+	subgroup.Get("/foo", func(ctx context.Context, r *BasicReqContext) {
+		r.ResponseWriter().Write([]byte("Hello world"))
 	})
 
 	res := httptest.NewRecorder()
