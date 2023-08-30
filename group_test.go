@@ -16,7 +16,7 @@ func TestGroup(t *testing.T) {
 	handler := func(ctx context.Context, r *BasicReqContext) {
 		r.ResponseWriter().Header().Set("Content-Type", "application/json")
 		r.ResponseWriter().WriteHeader(http.StatusCreated)
-		r.ResponseWriter().Write([]byte(`{"foo": "bar"}`))
+		_, _ = r.ResponseWriter().Write([]byte(`{"foo": "bar"}`))
 	}
 
 	tests := map[string]struct {
@@ -78,7 +78,7 @@ func TestGroup_Middleware(t *testing.T) {
 	})
 
 	group.Get("/foo", func(ctx context.Context, r *BasicReqContext) {
-		r.ResponseWriter().Write([]byte("Hello world"))
+		_, _ = r.ResponseWriter().Write([]byte("Hello world"))
 	})
 
 	res := httptest.NewRecorder()
@@ -107,7 +107,7 @@ func TestGroup_NestedGroup(t *testing.T) {
 	})
 
 	subgroup.Get("/foo", func(ctx context.Context, r *BasicReqContext) {
-		r.ResponseWriter().Write([]byte("Hello world"))
+		_, _ = r.ResponseWriter().Write([]byte("Hello world"))
 	})
 
 	res := httptest.NewRecorder()

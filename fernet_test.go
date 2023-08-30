@@ -16,7 +16,7 @@ func TestRouter(t *testing.T) {
 	handler := func(ctx context.Context, r *BasicReqContext) {
 		r.ResponseWriter().Header().Set("Content-Type", "application/json")
 		r.ResponseWriter().WriteHeader(http.StatusCreated)
-		r.ResponseWriter().Write([]byte(`{"foo": "bar"}`))
+		_, _ = r.ResponseWriter().Write([]byte(`{"foo": "bar"}`))
 	}
 
 	tests := map[string]struct {
@@ -52,7 +52,7 @@ func TestRouter_Root(t *testing.T) {
 	router.Get("/", func(ctx context.Context, r *BasicReqContext) {
 		r.ResponseWriter().Header().Set("Content-Type", "application/json")
 		r.ResponseWriter().WriteHeader(http.StatusCreated)
-		r.ResponseWriter().Write([]byte(`{"foo": "bar"}`))
+		_, _ = r.ResponseWriter().Write([]byte(`{"foo": "bar"}`))
 	})
 
 	require.Equal(t, 1, len(router.routes))
@@ -128,7 +128,7 @@ func TestRouter_Before(t *testing.T) {
 	req := httptest.NewRequest("GET", "/", nil)
 
 	router.Get("/", func(ctx context.Context, r *BasicReqContext) {
-		res.Write([]byte("Hello world"))
+		_, _ = res.Write([]byte("Hello world"))
 	})
 
 	router.ServeHTTP(res, req)
@@ -141,7 +141,7 @@ func TestRouter_Params(t *testing.T) {
 	router := New(WithBasicRequestContext)
 
 	router.Get("/hello/:name", func(ctx context.Context, r *BasicReqContext) {
-		r.ResponseWriter().Write([]byte(
+		_, _ = r.ResponseWriter().Write([]byte(
 			fmt.Sprintf("Hello %s", r.Params()["name"]),
 		))
 	})

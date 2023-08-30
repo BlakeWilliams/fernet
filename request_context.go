@@ -1,7 +1,6 @@
 package fernet
 
 import (
-	"context"
 	"net/http"
 )
 
@@ -36,7 +35,6 @@ type RequestContext interface {
 type BasicReqContext struct {
 	req    *http.Request
 	w      http.ResponseWriter
-	ctx    context.Context
 	params map[string]string
 }
 
