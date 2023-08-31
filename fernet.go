@@ -48,10 +48,6 @@ type (
 
 var _ Routable[*RootRequestContext] = (*Router[*RootRequestContext])(nil)
 
-func WithBasicRequestContext(rctx RequestContext) *RootRequestContext {
-	return rctx.(*RootRequestContext)
-}
-
 // New returns a new Router. The provided function is used to create a new
 // request context for each request. The context can be used to store data
 // that should be available to all handlers in the request like the current

@@ -152,3 +152,7 @@ func TestRouter_Params(t *testing.T) {
 	router.ServeHTTP(res, req)
 	require.Equal(t, "Hello fox", res.Body.String())
 }
+
+func WithBasicRequestContext(rctx RequestContext) *RootRequestContext {
+	return rctx.(*RootRequestContext)
+}
