@@ -4,57 +4,52 @@ import (
 	"net/http"
 )
 
-type Request interface {
-	// Request returns the original *http.Request
-	Request() *http.Request
-	Params() map[string]string
-}
-
-type Response interface {
-	// Writer returns the original http.ResponseWriter.
-	ResponseWriter() http.ResponseWriter
-}
-
-type ReqRes interface {
-	Request
-	Response
-}
-
+// RequestContext is an interface that exposes the http.Request,
+// http.ResponseWriter, and route params to a handler. Custom types can
+// implement this interface to be passed to handlers of the router.
 type RequestContext interface {
 	// Request returns the original *http.Request
 	Request() *http.Request
-	// Writer returns the original http.ResponseWriter. This can conflict with
-	// the ResponseWriter interface, so it's recommended to use the methods
-	// defined on this interface instead.
+	// Writer returns the original http.ResponseWriter.
 	ResponseWriter() http.ResponseWriter
+	// Params returns the parameters extracted from the URL path based on the
+	// matched route.
 	Params() map[string]string
+	// MatchedPath returns the path that was matched by the router.
+	MatchedPath() string
 }
 
 // BasicRequestContext is a basic implementation of RequestContext. It can be embedded in
 // other types to provide a default implementation of the RequestContext interface.
-type BasicReqContext struct {
-	req    *http.Request
-	w      http.ResponseWriter
-	params map[string]string
+type RootRequestContext struct {
+	req         *http.Request
+	w           http.ResponseWriter
+	params      map[string]string
+	matchedPath string
 }
 
-var _ RequestContext = (*BasicReqContext)(nil)
+var _ RequestContext = (*RootRequestContext)(nil)
 
-func NewRequestContext(req *http.Request, w http.ResponseWriter, params map[string]string) *BasicReqContext {
-	return &BasicReqContext{
-		req:    req,
-		w:      w,
-		params: params,
+func newRequestContext(req *http.Request, w http.ResponseWriter, matchedPath string, params map[string]string) *RootRequestContext {
+	return &RootRequestContext{
+		req:         req,
+		w:           w,
+		matchedPath: matchedPath,
+		params:      params,
 	}
 }
 
-func (r *BasicReqContext) Request() *http.Request {
+func (r *RootRequestContext) Request() *http.Request {
 	return r.req
 }
-func (r *BasicReqContext) ResponseWriter() http.ResponseWriter {
+func (r *RootRequestContext) ResponseWriter() http.ResponseWriter {
 	return r.w
 }
 
-func (r *BasicReqContext) Params() map[string]string {
+func (r *RootRequestContext) Params() map[string]string {
 	return r.params
+}
+
+func (r *RootRequestContext) MatchedPath() string {
+	return r.matchedPath
 }

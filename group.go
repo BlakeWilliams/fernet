@@ -8,17 +8,17 @@ import (
 
 type (
 	// Group is a collection of routes that share a common prefix and set of middleware.
-	Group[ReqCtx ReqRes] struct {
+	Group[ReqCtx RequestContext] struct {
 		prefix     string
 		middleware []func(context.Context, ReqCtx, Handler[ReqCtx])
 		parent     Routable[ReqCtx]
 	}
 )
 
-var _ Routable[*BasicReqContext] = (*Group[*BasicReqContext])(nil)
+var _ Routable[*RootRequestContext] = (*Group[*RootRequestContext])(nil)
 
 // NewGroup returns a new Group instance.
-func NewGroup[ReqCtx ReqRes](parent Routable[ReqCtx], prefix string) *Group[ReqCtx] {
+func NewGroup[ReqCtx RequestContext](parent Routable[ReqCtx], prefix string) *Group[ReqCtx] {
 	return &Group[ReqCtx]{
 		prefix:     prefix,
 		parent:     parent,

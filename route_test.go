@@ -94,9 +94,9 @@ func TestRouteMatching(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			req := httptest.NewRequest(tc.reqMethod, tc.reqPath, nil)
-			route := newRoute[*BasicReqContext](tc.routeMethod, tc.routePath, func(context.Context, *BasicReqContext) {})
+			route := newRoute[*RootRequestContext](tc.routeMethod, tc.routePath, func(context.Context, *RootRequestContext) {})
 
-			got, params := route.Match(req)
+			got, params := route.match(req)
 
 			require.Equal(t, got, tc.want, "expected route to match")
 			require.Equal(t, params, tc.params, "expected route to match")

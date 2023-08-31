@@ -5,14 +5,14 @@ import (
 	"strings"
 )
 
-type route[T ReqRes] struct {
+type route[T RequestContext] struct {
 	Method  string
-	Raw     string
+	Path    string
 	parts   []string
 	handler Handler[T]
 }
 
-func (r *route[C]) Match(req *http.Request) (bool, map[string]string) {
+func (r *route[C]) match(req *http.Request) (bool, map[string]string) {
 	if r.Method != req.Method {
 		return false, nil
 	}
@@ -36,13 +36,13 @@ func (r *route[C]) Match(req *http.Request) (bool, map[string]string) {
 	return true, params
 }
 
-func newRoute[T ReqRes](method string, path string, handler Handler[T]) *route[T] {
+func newRoute[T RequestContext](method string, path string, handler Handler[T]) *route[T] {
 	parts := normalizeRoutePath(path)
 
 	// TODO better support for `/`, remove double `//`
 	return &route[T]{
 		Method:  method,
-		Raw:     path,
+		Path:    path,
 		parts:   parts,
 		handler: handler,
 	}

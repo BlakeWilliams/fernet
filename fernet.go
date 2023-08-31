@@ -8,10 +8,10 @@ import (
 )
 
 type (
-	Handler[ReqCtx ReqRes] func(context.Context, ReqCtx)
+	Handler[ReqCtx RequestContext] func(context.Context, ReqCtx)
 
 	// Router represents the primary router for the application.
-	Router[ReqCtx ReqRes] struct {
+	Router[ReqCtx RequestContext] struct {
 		routes     []*route[ReqCtx]
 		tree       *radical.Node[*route[ReqCtx]]
 		metal      []func(http.ResponseWriter, *http.Request, http.Handler)
@@ -21,7 +21,7 @@ type (
 
 	// Routable is an interface that can be implemented by types that want to
 	// register routes with a router.
-	Routable[ReqCtx ReqRes] interface {
+	Routable[ReqCtx RequestContext] interface {
 		// Match registers a route with the given method and path
 		Match(method string, path string, fn Handler[ReqCtx])
 		// Get registers a GET route with the given path
@@ -46,17 +46,17 @@ type (
 	}
 )
 
-var _ Routable[*BasicReqContext] = (*Router[*BasicReqContext])(nil)
+var _ Routable[*RootRequestContext] = (*Router[*RootRequestContext])(nil)
 
-func WithBasicRequestContext(rctx RequestContext) *BasicReqContext {
-	return rctx.(*BasicReqContext)
+func WithBasicRequestContext(rctx RequestContext) *RootRequestContext {
+	return rctx.(*RootRequestContext)
 }
 
 // New returns a new Router. The provided function is used to create a new
 // request context for each request. The context can be used to store data
 // that should be available to all handlers in the request like the current
 // user, database connections, etc.
-func New[ReqCtx ReqRes, Init func(RequestContext) ReqCtx](init Init) *Router[ReqCtx] {
+func New[ReqCtx RequestContext, Init func(RequestContext) ReqCtx](init Init) *Router[ReqCtx] {
 	return &Router[ReqCtx]{
 		tree:       radical.New[*route[ReqCtx]](),
 		routes:     make([]*route[ReqCtx], 0),
@@ -136,7 +136,7 @@ func (r *Router[ReqCtx]) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		ok, params := value.Match(req)
+		ok, params := value.match(req)
 		if !ok {
 			// This should never actually get hit in real code but would
 			// indicate a bug in the framework.
@@ -157,7 +157,7 @@ func (r *Router[ReqCtx]) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 		handler(
 			req.Context(),
-			r.initReqCtx(NewRequestContext(req, rw, params)),
+			r.initReqCtx(newRequestContext(req, rw, value.Path, params)),
 		)
 	}
 
@@ -174,7 +174,7 @@ func (r *Router[ReqCtx]) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	handler(rw, req)
 }
 
-type Registerable[T ReqRes] interface {
+type Registerable[T RequestContext] interface {
 	Register(Routable[T])
 }
 
