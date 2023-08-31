@@ -48,10 +48,9 @@ type (
 
 var _ Routable[*RootRequestContext] = (*Router[*RootRequestContext])(nil)
 
-// New returns a new Router. The provided function is used to create a new
-// request context for each request. The context can be used to store data
-// that should be available to all handlers in the request like the current
-// user, database connections, etc.
+// New returns a new router with the given RequestContext type. The function
+// passed to this function is used to initialize the RequestContext for each
+// request which is then passed to the relevant route handler.
 func New[ReqCtx RequestContext, Init func(RequestContext) ReqCtx](init Init) *Router[ReqCtx] {
 	return &Router[ReqCtx]{
 		tree:       radical.New[*route[ReqCtx]](),
