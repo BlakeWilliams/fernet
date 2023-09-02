@@ -150,10 +150,14 @@ func (r *Router[ReqCtx]) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			}
 		}
 
+		res := newResponseWriter(rw)
+		reqCtx := newRequestContext(req, res, value.Path, params)
 		handler(
 			req.Context(),
-			r.initReqCtx(newRequestContext(req, rw, value.Path, params)),
+			r.initReqCtx(reqCtx),
 		)
+
+		res.Flush()
 	}
 
 	// Run Metal middleware
