@@ -10,8 +10,8 @@ import (
 type RequestContext interface {
 	// Request returns the original *http.Request
 	Request() *http.Request
-	// Writer returns a fernet.ResponseWriter
-	ResponseWriter() Response
+	// Writer returns a fernet.Response
+	Response() Response
 	// Params returns the parameters extracted from the URL path based on the
 	// matched route.
 	Params() map[string]string
@@ -42,7 +42,7 @@ func newRequestContext(req *http.Request, res Response, matchedPath string, para
 func (r *RootRequestContext) Request() *http.Request {
 	return r.req
 }
-func (r *RootRequestContext) ResponseWriter() Response {
+func (r *RootRequestContext) Response() Response {
 	return r.res
 }
 

@@ -8,6 +8,8 @@ import (
 )
 
 type (
+	Middleware[ReqCtx RequestContext] func(context.Context, ReqCtx, Handler[ReqCtx])
+
 	Handler[ReqCtx RequestContext] func(context.Context, ReqCtx)
 
 	// Router represents the primary router for the application.
@@ -125,21 +127,27 @@ func (r *Router[ReqCtx]) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		lookup := []string{method}
 		lookup = append(lookup, normalizedPath...)
 
+		var handler func(context.Context, ReqCtx)
+		var params map[string]string
+		var path string
+
 		ok, value := r.tree.Value(lookup)
-		if !ok {
-			rw.WriteHeader(http.StatusNotFound)
-			return
-		}
+		if ok {
+			handler = value.handler
+			path = value.Path
 
-		ok, params := value.match(req)
-		if !ok {
-			// This should never actually get hit in real code but would
-			// indicate a bug in the framework.
-			panic("route did not match request")
-		}
-
-		handler := func(ctx context.Context, rctx ReqCtx) {
-			value.handler(ctx, rctx)
+			var ok bool
+			ok, params = value.match(req)
+			if !ok {
+				// This should never actually get hit in real code but would
+				// indicate a bug in the framework.
+				panic("route did not match request")
+			}
+		} else {
+			params = map[string]string{}
+			handler = func(ctx context.Context, rctx ReqCtx) {
+				rctx.Response().WriteHeader(http.StatusNotFound)
+			}
 		}
 
 		for i := len(r.middleware) - 1; i >= 0; i-- {
@@ -151,7 +159,7 @@ func (r *Router[ReqCtx]) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 
 		res := newResponseWriter(rw)
-		reqCtx := newRequestContext(req, res, value.Path, params)
+		reqCtx := newRequestContext(req, res, path, params)
 		handler(
 			req.Context(),
 			r.initReqCtx(reqCtx),

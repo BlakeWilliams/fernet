@@ -14,9 +14,9 @@ func TestRouter(t *testing.T) {
 	router := New(WithBasicRequestContext)
 
 	handler := func(ctx context.Context, r *RootRequestContext) {
-		r.ResponseWriter().Header().Set("Content-Type", "application/json")
-		r.ResponseWriter().WriteHeader(http.StatusCreated)
-		_, _ = r.ResponseWriter().Write([]byte(`{"foo": "bar"}`))
+		r.Response().Header().Set("Content-Type", "application/json")
+		r.Response().WriteHeader(http.StatusCreated)
+		_, _ = r.Response().Write([]byte(`{"foo": "bar"}`))
 	}
 
 	tests := map[string]struct {
@@ -50,9 +50,9 @@ func TestRouter_Root(t *testing.T) {
 	router := New(WithBasicRequestContext)
 
 	router.Get("/", func(ctx context.Context, r *RootRequestContext) {
-		r.ResponseWriter().Header().Set("Content-Type", "application/json")
-		r.ResponseWriter().WriteHeader(http.StatusCreated)
-		_, _ = r.ResponseWriter().Write([]byte(`{"foo": "bar"}`))
+		r.Response().Header().Set("Content-Type", "application/json")
+		r.Response().WriteHeader(http.StatusCreated)
+		_, _ = r.Response().Write([]byte(`{"foo": "bar"}`))
 	})
 
 	require.Equal(t, 1, len(router.routes))
@@ -118,8 +118,8 @@ func TestRouter_Before(t *testing.T) {
 	router.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
 		require.Equal(t, "bar", ctx.Value(contextKey{}))
 		require.Equal(t, "baz", ctx.Value(beforeContextKey{}))
-		r.ResponseWriter().Header().Set("x-metal", "bar")
-		r.ResponseWriter().Header().Set("x-before", "baz")
+		r.Response().Header().Set("x-metal", "bar")
+		r.Response().Header().Set("x-before", "baz")
 
 		next(ctx, r)
 	})
@@ -137,11 +137,41 @@ func TestRouter_Before(t *testing.T) {
 	require.Equal(t, "baz", res.Header().Get("x-before"))
 }
 
+func TestRouter_BeforeMissing(t *testing.T) {
+	router := New(WithBasicRequestContext)
+	router.UseMetal(func(w http.ResponseWriter, r *http.Request, h http.Handler) {
+		ctx := context.WithValue(r.Context(), contextKey{}, "bar")
+		h.ServeHTTP(w, r.WithContext(ctx))
+	})
+	router.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
+		require.Equal(t, "bar", ctx.Value(contextKey{}))
+		ctx = context.WithValue(ctx, beforeContextKey{}, "baz")
+
+		next(ctx, r)
+	})
+	router.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
+		require.Equal(t, "bar", ctx.Value(contextKey{}))
+		require.Equal(t, "baz", ctx.Value(beforeContextKey{}))
+		r.Response().Header().Set("x-metal", "bar")
+		r.Response().Header().Set("x-before", "baz")
+
+		next(ctx, r)
+	})
+
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/", nil)
+
+	router.ServeHTTP(res, req)
+
+	require.Equal(t, "bar", res.Header().Get("x-metal"))
+	require.Equal(t, "baz", res.Header().Get("x-before"))
+}
+
 func TestRouter_Params(t *testing.T) {
 	router := New(WithBasicRequestContext)
 
 	router.Get("/hello/:name", func(ctx context.Context, r *RootRequestContext) {
-		_, _ = r.ResponseWriter().Write([]byte(
+		_, _ = r.Response().Write([]byte(
 			fmt.Sprintf("Hello %s", r.Params()["name"]),
 		))
 	})

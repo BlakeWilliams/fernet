@@ -14,9 +14,9 @@ func TestGroup(t *testing.T) {
 	group := router.Group("/api/")
 
 	handler := func(ctx context.Context, r *RootRequestContext) {
-		r.ResponseWriter().Header().Set("Content-Type", "application/json")
-		r.ResponseWriter().WriteHeader(http.StatusCreated)
-		_, _ = r.ResponseWriter().Write([]byte(`{"foo": "bar"}`))
+		r.Response().Header().Set("Content-Type", "application/json")
+		r.Response().WriteHeader(http.StatusCreated)
+		_, _ = r.Response().Write([]byte(`{"foo": "bar"}`))
 	}
 
 	tests := map[string]struct {
@@ -61,8 +61,8 @@ func TestGroup_Middleware(t *testing.T) {
 	router.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
 		require.Equal(t, "bar", ctx.Value(contextKey{}))
 		require.Equal(t, "baz", ctx.Value(beforeContextKey{}))
-		r.ResponseWriter().Header().Set("x-metal", "bar")
-		r.ResponseWriter().Header().Set("x-before", "baz")
+		r.Response().Header().Set("x-metal", "bar")
+		r.Response().Header().Set("x-before", "baz")
 
 		next(ctx, r)
 	})
@@ -72,13 +72,13 @@ func TestGroup_Middleware(t *testing.T) {
 	group.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
 		require.Equal(t, "bar", ctx.Value(contextKey{}))
 		require.Equal(t, "baz", ctx.Value(beforeContextKey{}))
-		r.ResponseWriter().Header().Set("x-group", "yolo")
+		r.Response().Header().Set("x-group", "yolo")
 
 		next(ctx, r)
 	})
 
 	group.Get("/foo", func(ctx context.Context, r *RootRequestContext) {
-		_, _ = r.ResponseWriter().Write([]byte("Hello world"))
+		_, _ = r.Response().Write([]byte("Hello world"))
 	})
 
 	res := httptest.NewRecorder()
@@ -102,12 +102,12 @@ func TestGroup_NestedGroup(t *testing.T) {
 
 	subgroup.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
 		require.Equal(t, "foo", ctx.Value(contextKey{}))
-		r.ResponseWriter().Header().Set("x-subgroup", "v1")
+		r.Response().Header().Set("x-subgroup", "v1")
 		next(ctx, r)
 	})
 
 	subgroup.Get("/foo", func(ctx context.Context, r *RootRequestContext) {
-		_, _ = r.ResponseWriter().Write([]byte("Hello world"))
+		_, _ = r.Response().Write([]byte("Hello world"))
 	})
 
 	res := httptest.NewRecorder()
