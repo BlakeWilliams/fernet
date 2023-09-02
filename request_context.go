@@ -11,7 +11,7 @@ type RequestContext interface {
 	// Request returns the original *http.Request
 	Request() *http.Request
 	// Writer returns a fernet.ResponseWriter
-	ResponseWriter() ResponseWriter
+	ResponseWriter() Response
 	// Params returns the parameters extracted from the URL path based on the
 	// matched route.
 	Params() map[string]string
@@ -23,14 +23,14 @@ type RequestContext interface {
 // other types to provide a default implementation of the RequestContext interface.
 type RootRequestContext struct {
 	req         *http.Request
-	res         ResponseWriter
+	res         Response
 	params      map[string]string
 	matchedPath string
 }
 
 var _ RequestContext = (*RootRequestContext)(nil)
 
-func newRequestContext(req *http.Request, res ResponseWriter, matchedPath string, params map[string]string) *RootRequestContext {
+func newRequestContext(req *http.Request, res Response, matchedPath string, params map[string]string) *RootRequestContext {
 	return &RootRequestContext{
 		req:         req,
 		res:         res,
@@ -42,7 +42,7 @@ func newRequestContext(req *http.Request, res ResponseWriter, matchedPath string
 func (r *RootRequestContext) Request() *http.Request {
 	return r.req
 }
-func (r *RootRequestContext) ResponseWriter() ResponseWriter {
+func (r *RootRequestContext) ResponseWriter() Response {
 	return r.res
 }
 

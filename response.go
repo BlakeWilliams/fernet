@@ -5,14 +5,20 @@ import (
 	"net/http"
 )
 
-type ResponseWriter interface {
+// Response is an interface that adds additional behavior to
+// http.ResponseWriter. It exposes the status written, allows the buffered body
+// to be reset via `Clear`, and can Flush the response.
+type Response interface {
 	// Status returns the status to be written to the client
 	Status() int
+	// Flush writes the response to the client
 	Flush() (int, error)
+	// Clear resets the buffered response body
 	Clear()
 	http.ResponseWriter
 }
 
+// ErrAlreadyFlushed is returned when the response would have been written twice.
 var ErrAlreadyFlushed error = errors.New("response has already been flushed")
 
 // responseWriter implements the http.responseWriter interface and exposes
