@@ -16,7 +16,7 @@ type (
 	Router[ReqCtx RequestContext] struct {
 		routes     []*route[ReqCtx]
 		tree       *radical.Node[*route[ReqCtx]]
-		metal      []func(http.ResponseWriter, *http.Request, http.Handler)
+		Metal      *MetalStack[ReqCtx]
 		middleware []func(context.Context, ReqCtx, Handler[ReqCtx])
 		initReqCtx func(RequestContext) ReqCtx
 	}
@@ -54,13 +54,15 @@ var _ Routable[*RootRequestContext] = (*Router[*RootRequestContext])(nil)
 // passed to this function is used to initialize the RequestContext for each
 // request which is then passed to the relevant route handler.
 func New[ReqCtx RequestContext, Init func(RequestContext) ReqCtx](init Init) *Router[ReqCtx] {
-	return &Router[ReqCtx]{
+	r := &Router[ReqCtx]{
 		tree:       radical.New[*route[ReqCtx]](),
-		routes:     make([]*route[ReqCtx], 0),
-		metal:      make([]func(http.ResponseWriter, *http.Request, http.Handler), 0),
 		middleware: make([]func(context.Context, ReqCtx, Handler[ReqCtx]), 0),
 		initReqCtx: init,
 	}
+
+	r.Metal = NewMetalStack[ReqCtx](http.HandlerFunc(r.handler))
+
+	return r
 }
 
 // Match registers a route with the router.
@@ -100,11 +102,6 @@ func (r *Router[ReqCtx]) Delete(path string, handler Handler[ReqCtx]) {
 	r.Match(http.MethodDelete, path, handler)
 }
 
-// UseMetal registers an http package based middleware that is run before each request
-func (r *Router[ReqCtx]) UseMetal(fn func(http.ResponseWriter, *http.Request, http.Handler)) {
-	r.metal = append(r.metal, fn)
-}
-
 // Use registers a middleware that will be run after the UseMetal middleware but
 // before the handler. Each middleware is passed the next Handler or middleware
 // in the stack. Not calling the next function will halt the middleware/handler chain.
@@ -120,65 +117,55 @@ func (r *Router[ReqCtx]) Group(prefix string) *Group[ReqCtx] {
 
 // ServeHTTP implements the http.Handler interface.
 func (r *Router[ReqCtx]) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	r.Metal.ServeHTTP(rw, req)
+}
+
+func (r *Router[ReqCtx]) handler(rw http.ResponseWriter, req *http.Request) {
 	// Run fernet middleware and call route handler
-	handler := func(rw http.ResponseWriter, req *http.Request) {
-		method := req.Method
-		normalizedPath := normalizeRoutePath(req.URL.Path)
-		lookup := []string{method}
-		lookup = append(lookup, normalizedPath...)
+	method := req.Method
+	normalizedPath := normalizeRoutePath(req.URL.Path)
+	lookup := []string{method}
+	lookup = append(lookup, normalizedPath...)
 
-		var handler func(context.Context, ReqCtx)
-		var params map[string]string
-		var path string
+	var handler func(context.Context, ReqCtx)
+	var params map[string]string
+	var path string
 
-		ok, value := r.tree.Value(lookup)
-		if ok {
-			handler = value.handler
-			path = value.Path
+	ok, value := r.tree.Value(lookup)
+	if ok {
+		handler = value.handler
+		path = value.Path
 
-			var ok bool
-			ok, params = value.match(req)
-			if !ok {
-				// This should never actually get hit in real code but would
-				// indicate a bug in the framework.
-				panic("route did not match request")
-			}
-		} else {
-			params = map[string]string{}
-			handler = func(ctx context.Context, rctx ReqCtx) {
-				rctx.Response().WriteHeader(http.StatusNotFound)
-			}
+		var ok bool
+		ok, params = value.match(req)
+		if !ok {
+			// This should never actually get hit in real code but would
+			// indicate a bug in the framework.
+			panic("route did not match request")
 		}
-
-		for i := len(r.middleware) - 1; i >= 0; i-- {
-			currentHandler := handler
-			middleware := r.middleware[i]
-			handler = func(ctx context.Context, reqCtx ReqCtx) {
-				middleware(ctx, reqCtx, currentHandler)
-			}
+	} else {
+		params = map[string]string{}
+		handler = func(ctx context.Context, rctx ReqCtx) {
+			rctx.Response().WriteHeader(http.StatusNotFound)
 		}
-
-		res := newResponseWriter(rw)
-		reqCtx := newRequestContext(req, res, path, params)
-		handler(
-			req.Context(),
-			r.initReqCtx(reqCtx),
-		)
-
-		res.Flush()
 	}
 
-	// Run Metal middleware
-	for i := len(r.metal) - 1; i >= 0; i-- {
+	for i := len(r.middleware) - 1; i >= 0; i-- {
 		currentHandler := handler
-		metal := r.metal[i]
-
-		handler = func(rw http.ResponseWriter, r *http.Request) {
-			metal(rw, r, http.HandlerFunc(currentHandler))
+		middleware := r.middleware[i]
+		handler = func(ctx context.Context, reqCtx ReqCtx) {
+			middleware(ctx, reqCtx, currentHandler)
 		}
 	}
 
-	handler(rw, req)
+	res := newResponseWriter(rw)
+	reqCtx := newRequestContext(req, res, path, params)
+	handler(
+		req.Context(),
+		r.initReqCtx(reqCtx),
+	)
+
+	res.Flush()
 }
 
 type Registerable[T RequestContext] interface {
