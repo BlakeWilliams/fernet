@@ -95,3 +95,13 @@ adminGroup.Use(func(ctx context.Context, r *RequestContext, next fernet.Handler[
     next(ctx, r)
 })
 ```
+
+## Middleware
+
+Fernet provides a few middleware functions out of the box. Import the
+`github.com/blakewilliams/fernet/middleware` package to use them.
+
+- `middleware.ErrorHandler` - rescues panics and calls a `Handler[T]` to handle
+  the error.
+- `middleware.Logger` - logs requests and responses using slog.
+- `middleware.MethodRewrite` - Rewrites the HTTP method based on the value of the `_method` form value.
