@@ -48,7 +48,7 @@ func TestGroup(t *testing.T) {
 
 func TestGroup_Middleware(t *testing.T) {
 	router := New(WithBasicRequestContext)
-	router.Metal.Use(func(w http.ResponseWriter, r *http.Request, h http.Handler) {
+	router.Metal().Use(func(w http.ResponseWriter, r *http.Request, h http.Handler) {
 		ctx := context.WithValue(r.Context(), contextKey{}, "bar")
 		h.ServeHTTP(w, r.WithContext(ctx))
 	})

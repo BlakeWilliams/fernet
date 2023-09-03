@@ -85,11 +85,11 @@ type beforeContextKey struct{}
 
 func TestRouter_Metal(t *testing.T) {
 	router := New(WithBasicRequestContext)
-	router.Metal.Use(func(w http.ResponseWriter, r *http.Request, h http.Handler) {
+	router.Metal().Use(func(w http.ResponseWriter, r *http.Request, h http.Handler) {
 		ctx := context.WithValue(r.Context(), contextKey{}, "bar")
 		h.ServeHTTP(w, r.WithContext(ctx))
 	})
-	router.Metal.Use(func(w http.ResponseWriter, r *http.Request, h http.Handler) {
+	router.Metal().Use(func(w http.ResponseWriter, r *http.Request, h http.Handler) {
 		require.Equal(t, "bar", r.Context().Value(contextKey{}))
 		w.Header().Set("x-foo", "bar")
 		h.ServeHTTP(w, r)
@@ -105,7 +105,7 @@ func TestRouter_Metal(t *testing.T) {
 
 func TestRouter_Before(t *testing.T) {
 	router := New(WithBasicRequestContext)
-	router.Metal.Use(func(w http.ResponseWriter, r *http.Request, h http.Handler) {
+	router.Metal().Use(func(w http.ResponseWriter, r *http.Request, h http.Handler) {
 		ctx := context.WithValue(r.Context(), contextKey{}, "bar")
 		h.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -139,7 +139,7 @@ func TestRouter_Before(t *testing.T) {
 
 func TestRouter_BeforeMissing(t *testing.T) {
 	router := New(WithBasicRequestContext)
-	router.Metal.Use(func(w http.ResponseWriter, r *http.Request, h http.Handler) {
+	router.Metal().Use(func(w http.ResponseWriter, r *http.Request, h http.Handler) {
 		ctx := context.WithValue(r.Context(), contextKey{}, "bar")
 		h.ServeHTTP(w, r.WithContext(ctx))
 	})
