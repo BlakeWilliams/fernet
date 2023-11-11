@@ -38,6 +38,43 @@ func (c *CommentData) FromRequest(ctx context.Context, r *RootRequestContext) bo
 
 func TestSubRouter(t *testing.T) {
 	router := New(WithBasicRequestContext)
+	subrouter := NewSubRouter(router, &PostData{})
+
+	handler := func(ctx context.Context, r *RootRequestContext, postData *PostData) {
+		r.Response().Header().Set("Content-Type", "application/json")
+		r.Response().WriteHeader(http.StatusCreated)
+		_, _ = r.Response().Write([]byte(`{"foo": "bar"}`))
+	}
+
+	tests := map[string]struct {
+		routerFn func(string, SubRouterHandler[*RootRequestContext, *PostData])
+		method   string
+	}{
+		"GET":    {method: http.MethodGet, routerFn: subrouter.Get},
+		"POST":   {method: http.MethodPost, routerFn: subrouter.Post},
+		"PUT":    {method: http.MethodPut, routerFn: subrouter.Put},
+		"PATCH":  {method: http.MethodPatch, routerFn: subrouter.Patch},
+		"DELETE": {method: http.MethodDelete, routerFn: subrouter.Delete},
+	}
+
+	for testName, tc := range tests {
+		t.Run(testName, func(t *testing.T) {
+			tc.routerFn("/foo", handler)
+
+			res := httptest.NewRecorder()
+			req := httptest.NewRequest(tc.method, "/foo", nil)
+
+			router.ServeHTTP(res, req)
+
+			require.Equal(t, http.StatusCreated, res.Code)
+			require.Equal(t, "application/json", res.Header().Get("Content-Type"))
+			require.Equal(t, `{"foo": "bar"}`, res.Body.String())
+		})
+	}
+}
+
+func TestSubRouter_Routing(t *testing.T) {
+	router := New(WithBasicRequestContext)
 
 	subrouter := NewSubRouter(router, &PostData{})
 	subrouter.Match("GET", "/", func(ctx context.Context, r *RootRequestContext, p *PostData) {
