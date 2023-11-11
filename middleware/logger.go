@@ -33,8 +33,8 @@ func (r *responseStatusTracker) Header() http.Header {
 	return r.ResponseWriter.Header()
 }
 
-func Logger[ReqCtx fernet.RequestContext](logger *slog.Logger) func(context.Context, ReqCtx, fernet.Handler[ReqCtx]) {
-	return func(ctx context.Context, rctx ReqCtx, next fernet.Handler[ReqCtx]) {
+func Logger[ReqCtx fernet.RequestContext](logger *slog.Logger) func(context.Context, ReqCtx, fernet.Next[ReqCtx]) {
+	return func(ctx context.Context, rctx ReqCtx, next fernet.Next[ReqCtx]) {
 		start := time.Now()
 
 		logger.Info(

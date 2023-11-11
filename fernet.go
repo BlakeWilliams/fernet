@@ -8,16 +8,20 @@ import (
 )
 
 type (
-	Middleware[T RequestContext] func(context.Context, T, Handler[T])
+	FromRequest[T RequestContext] interface {
+		FromRequest(ctx context.Context, rc T) bool
+	}
 
-	Handler[T RequestContext] func(context.Context, T)
+	Middleware[T RequestContext] func(context.Context, T, Next[T])
+	Next[T RequestContext]       func(context.Context, T)
+	// Handler[T RequestContext]    func(context.Context, T, any)
 
 	// Router represents the primary router for the application.
 	Router[T RequestContext] struct {
 		routes     []*route[T]
 		tree       *radical.Node[*route[T]]
 		metal      *MetalStack[T]
-		middleware []func(context.Context, T, Handler[T])
+		middleware []func(context.Context, T, Next[T])
 		initT      func(RequestContext) T
 	}
 
@@ -25,21 +29,21 @@ type (
 	// register routes with a router.
 	Routable[T RequestContext] interface {
 		// Match registers a route with the given method and path
-		Match(method string, path string, fn Handler[T])
+		Match(method string, path string, fn any)
 		// Get registers a GET route with the given path
-		Get(method string, fn Handler[T])
+		Get(method string, fn any)
 		// Post registers a POST route with the given path
-		Post(method string, fn Handler[T])
+		Post(method string, fn any)
 		// Put registers a PUT route with the given path
-		Put(method string, fn Handler[T])
+		Put(method string, fn any)
 		// Patch registers a PATCH route with the given path
-		Patch(method string, fn Handler[T])
+		Patch(method string, fn any)
 		// Delete registers a DELETE route with the given path
-		Delete(method string, fn Handler[T])
+		Delete(method string, fn any)
 
 		// Use registers a middleware function that is run before each request
 		// for this group and all groups below it.
-		Use(func(context.Context, T, Handler[T]))
+		Use(func(context.Context, T, Next[T]))
 
 		// Group returns a new group based on this Routable. It will have its
 		// own middleware stack in addition to the middleware stack on the
@@ -56,7 +60,7 @@ var _ Routable[*RootRequestContext] = (*Router[*RootRequestContext])(nil)
 func New[T RequestContext, Init func(RequestContext) T](init Init) *Router[T] {
 	r := &Router[T]{
 		tree:       radical.New[*route[T]](),
-		middleware: make([]func(context.Context, T, Handler[T]), 0),
+		middleware: make([]func(context.Context, T, Next[T]), 0),
 		initT:      init,
 	}
 
@@ -65,8 +69,10 @@ func New[T RequestContext, Init func(RequestContext) T](init Init) *Router[T] {
 	return r
 }
 
-// Match registers a route with the router.
-func (r *Router[T]) Match(method string, path string, handler Handler[T]) {
+// internal method to handle registering routes that have already called
+// createHandler. This allows methods like Group to wrap the handler in
+// middleware before registering it.
+func (r *Router[T]) rawMatch(method string, path string, handler Next[T]) {
 	route := newRoute[T](method, path, handler)
 	r.routes = append(r.routes, route)
 
@@ -77,35 +83,47 @@ func (r *Router[T]) Match(method string, path string, handler Handler[T]) {
 	r.tree.Add(pathParts, route)
 }
 
+// Match registers a route with the router.
+func (r *Router[T]) Match(method string, path string, handler any) {
+	route := newRoute[T](method, path, createHandler[T](handler))
+	r.routes = append(r.routes, route)
+
+	pathParts := make([]string, 0, len(route.parts)+1)
+	pathParts = append(pathParts, method)
+	pathParts = append(pathParts, route.parts...)
+
+	r.tree.Add(pathParts, route)
+}
+
 // Get registers a GET route with the router.
-func (r *Router[T]) Get(path string, handler Handler[T]) {
+func (r *Router[T]) Get(path string, handler any) {
 	r.Match(http.MethodGet, path, handler)
 }
 
 // Get registers a GET route with the router.
-func (r *Router[T]) Post(path string, handler Handler[T]) {
+func (r *Router[T]) Post(path string, handler any) {
 	r.Match(http.MethodPost, path, handler)
 }
 
 // Put registers a PUT route with the router.
-func (r *Router[T]) Put(path string, handler Handler[T]) {
+func (r *Router[T]) Put(path string, handler any) {
 	r.Match(http.MethodPut, path, handler)
 }
 
 // Patch registers a PATCH route with the router.
-func (r *Router[T]) Patch(path string, handler Handler[T]) {
+func (r *Router[T]) Patch(path string, handler any) {
 	r.Match(http.MethodPatch, path, handler)
 }
 
 // Delete registers a DELETE route with the router.
-func (r *Router[T]) Delete(path string, handler Handler[T]) {
+func (r *Router[T]) Delete(path string, handler any) {
 	r.Match(http.MethodDelete, path, handler)
 }
 
 // Use registers a middleware that will be run after the UseMetal middleware but
 // before the handler. Each middleware is passed the next Handler or middleware
 // in the stack. Not calling the next function will halt the middleware/handler chain.
-func (r *Router[T]) Use(fn func(context.Context, T, Handler[T])) {
+func (r *Router[T]) Use(fn func(context.Context, T, Next[T])) {
 	r.middleware = append(r.middleware, fn)
 }
 
@@ -140,7 +158,9 @@ func (r *Router[T]) handler(rw http.ResponseWriter, req *http.Request) {
 
 	ok, value := r.tree.Value(lookup)
 	if ok {
-		handler = value.handler
+		handler = func(ctx context.Context, t T) {
+			value.handler(ctx, t)
+		}
 		path = value.Path
 
 		var ok bool

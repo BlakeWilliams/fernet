@@ -20,7 +20,7 @@ func TestGroup(t *testing.T) {
 	}
 
 	tests := map[string]struct {
-		routerFn func(string, Handler[*RootRequestContext])
+		routerFn func(string, any)
 		method   string
 	}{
 		"GET":    {method: http.MethodGet, routerFn: group.Get},
@@ -52,13 +52,13 @@ func TestGroup_Middleware(t *testing.T) {
 		ctx := context.WithValue(r.Context(), contextKey{}, "bar")
 		h.ServeHTTP(w, r.WithContext(ctx))
 	})
-	router.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
+	router.Use(func(ctx context.Context, r *RootRequestContext, next Next[*RootRequestContext]) {
 		require.Equal(t, "bar", ctx.Value(contextKey{}))
 		ctx = context.WithValue(ctx, beforeContextKey{}, "baz")
 
 		next(ctx, r)
 	})
-	router.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
+	router.Use(func(ctx context.Context, r *RootRequestContext, next Next[*RootRequestContext]) {
 		require.Equal(t, "bar", ctx.Value(contextKey{}))
 		require.Equal(t, "baz", ctx.Value(beforeContextKey{}))
 		r.Response().Header().Set("x-metal", "bar")
@@ -69,7 +69,7 @@ func TestGroup_Middleware(t *testing.T) {
 
 	group := router.Group("/api")
 
-	group.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
+	group.Use(func(ctx context.Context, r *RootRequestContext, next Next[*RootRequestContext]) {
 		require.Equal(t, "bar", ctx.Value(contextKey{}))
 		require.Equal(t, "baz", ctx.Value(beforeContextKey{}))
 		r.Response().Header().Set("x-group", "yolo")
@@ -95,12 +95,12 @@ func TestGroup_NestedGroup(t *testing.T) {
 	group := router.Group("/api")
 	subgroup := group.Group("/v1")
 
-	group.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
+	group.Use(func(ctx context.Context, r *RootRequestContext, next Next[*RootRequestContext]) {
 		ctx = context.WithValue(ctx, contextKey{}, "foo")
 		next(ctx, r)
 	})
 
-	subgroup.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
+	subgroup.Use(func(ctx context.Context, r *RootRequestContext, next Next[*RootRequestContext]) {
 		require.Equal(t, "foo", ctx.Value(contextKey{}))
 		r.Response().Header().Set("x-subgroup", "v1")
 		next(ctx, r)

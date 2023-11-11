@@ -9,7 +9,7 @@ type route[T RequestContext] struct {
 	Method  string
 	Path    string
 	parts   []string
-	handler Handler[T]
+	handler Next[T]
 }
 
 func (r *route[C]) match(req *http.Request) (bool, map[string]string) {
@@ -36,7 +36,7 @@ func (r *route[C]) match(req *http.Request) (bool, map[string]string) {
 	return true, params
 }
 
-func newRoute[T RequestContext](method string, path string, handler Handler[T]) *route[T] {
+func newRoute[T RequestContext](method string, path string, handler Next[T]) *route[T] {
 	parts := normalizeRoutePath(path)
 
 	// TODO better support for `/`, remove double `//`

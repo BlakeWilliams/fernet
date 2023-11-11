@@ -13,8 +13,8 @@ import (
 func ErrorHandler[T fernet.RequestContext](
 	log *slog.Logger,
 	handler func(ctx context.Context, rctx T, recovered any),
-) func(context.Context, T, fernet.Handler[T]) {
-	return func(ctx context.Context, rctx T, next fernet.Handler[T]) {
+) func(context.Context, T, fernet.Next[T]) {
+	return func(ctx context.Context, rctx T, next fernet.Next[T]) {
 		defer func() {
 			if rec := recover(); rec != nil {
 				if err, ok := rec.(error); ok {

@@ -10,17 +10,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type PostData struct {
+	param int `json:"foo"`
+}
+
+func (p *PostData) FromRequest(ctx context.Context, r *RootRequestContext) bool {
+	return true
+}
+
 func TestRouter(t *testing.T) {
 	router := New(WithBasicRequestContext)
 
-	handler := func(ctx context.Context, r *RootRequestContext) {
+	handler := func(ctx context.Context, r *RootRequestContext, p *PostData) {
 		r.Response().Header().Set("Content-Type", "application/json")
 		r.Response().WriteHeader(http.StatusCreated)
 		_, _ = r.Response().Write([]byte(`{"foo": "bar"}`))
 	}
 
 	tests := map[string]struct {
-		routerFn func(string, Handler[*RootRequestContext])
+		routerFn func(string, any)
 		method   string
 	}{
 		"GET":    {method: http.MethodGet, routerFn: router.Get},
@@ -109,13 +117,13 @@ func TestRouter_Before(t *testing.T) {
 		ctx := context.WithValue(r.Context(), contextKey{}, "bar")
 		h.ServeHTTP(w, r.WithContext(ctx))
 	})
-	router.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
+	router.Use(func(ctx context.Context, r *RootRequestContext, next Next[*RootRequestContext]) {
 		require.Equal(t, "bar", ctx.Value(contextKey{}))
 		ctx = context.WithValue(ctx, beforeContextKey{}, "baz")
 
 		next(ctx, r)
 	})
-	router.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
+	router.Use(func(ctx context.Context, r *RootRequestContext, next Next[*RootRequestContext]) {
 		require.Equal(t, "bar", ctx.Value(contextKey{}))
 		require.Equal(t, "baz", ctx.Value(beforeContextKey{}))
 		r.Response().Header().Set("x-metal", "bar")
@@ -143,13 +151,13 @@ func TestRouter_BeforeMissing(t *testing.T) {
 		ctx := context.WithValue(r.Context(), contextKey{}, "bar")
 		h.ServeHTTP(w, r.WithContext(ctx))
 	})
-	router.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
+	router.Use(func(ctx context.Context, r *RootRequestContext, next Next[*RootRequestContext]) {
 		require.Equal(t, "bar", ctx.Value(contextKey{}))
 		ctx = context.WithValue(ctx, beforeContextKey{}, "baz")
 
 		next(ctx, r)
 	})
-	router.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
+	router.Use(func(ctx context.Context, r *RootRequestContext, next Next[*RootRequestContext]) {
 		require.Equal(t, "bar", ctx.Value(contextKey{}))
 		require.Equal(t, "baz", ctx.Value(beforeContextKey{}))
 		r.Response().Header().Set("x-metal", "bar")
