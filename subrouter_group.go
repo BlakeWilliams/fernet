@@ -79,7 +79,6 @@ func (r *SubRouterGroup[T, Child]) wrap(fn SubRouterHandler[T, Child]) Handler[T
 	return func(ctx context.Context, rc T) {
 		newChild := reflect.New(childType)
 		if !isPointer {
-			// TODO report warning?
 			newChild = newChild.Elem()
 		}
 		child := newChild.Interface()
