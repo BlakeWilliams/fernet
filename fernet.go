@@ -21,6 +21,14 @@ type (
 		initT      func(RequestContext) T
 	}
 
+	// Registerable is an interface that can be implemented by types that want
+	// to register routes with a router. This allows the router to be extended
+	// by internal or external packages like Group, and SubRouter.
+	Registerable[T RequestContext] interface {
+		// RawMatch registers a route with the given method and path
+		RawMatch(method string, path string, fn Handler[T])
+	}
+
 	// Routable is an interface that can be implemented by types that want to
 	// register routes with a router.
 	Routable[T RequestContext] interface {
@@ -63,6 +71,12 @@ func New[T RequestContext, Init func(RequestContext) T](init Init) *Router[T] {
 	r.metal = NewMetalStack[T](http.HandlerFunc(r.handler))
 
 	return r
+}
+
+// RawMatch implements the Registerable interface and registers a route with the
+// router.
+func (r *Router[T]) RawMatch(method string, path string, handler Handler[T]) {
+	r.Match(method, path, handler)
 }
 
 // Match registers a route with the router.
