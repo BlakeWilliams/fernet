@@ -19,7 +19,7 @@ type (
 	// to the handler as the third argument.
 	SubRouter[T RequestContext, RequestData FromRequest[T]] struct {
 		parent Registerable[T]
-		root   *SubRouterGroup[T, RequestData]
+		root   *subRouterGroup[T, RequestData]
 	}
 
 	// SubRouterHandler is the signature for SubRouter handlers. It accepts the
@@ -35,7 +35,6 @@ type (
 		Put(string, SubRouterHandler[T, RequestData])
 		Patch(string, SubRouterHandler[T, RequestData])
 		Delete(string, SubRouterHandler[T, RequestData])
-		Before(func(context.Context, T, RequestData) bool)
 	}
 
 	placeholderFromRequest struct{}
@@ -53,7 +52,7 @@ var _ SubRouterRoutable[*RootRequestContext, *placeholderFromRequest] = &SubRout
 func NewSubRouter[Parent RequestContext, RequestData FromRequest[Parent]](r Registerable[Parent], dataType RequestData) *SubRouter[Parent, RequestData] {
 	return &SubRouter[Parent, RequestData]{
 		parent: r,
-		root: &SubRouterGroup[Parent, RequestData]{
+		root: &subRouterGroup[Parent, RequestData]{
 			prefix:  "",
 			parent:  r,
 			befores: make([]func(context.Context, Parent, RequestData) bool, 0),
@@ -98,12 +97,7 @@ func (r *SubRouter[T, RequestData]) Delete(path string, fn SubRouterHandler[T, R
 	r.root.Delete(path, fn)
 }
 
-// Use registers a middleware function that will be called before each handler.
-func (r *SubRouter[T, RequestData]) Before(fn func(context.Context, T, RequestData) bool) {
-	r.root.Before(fn)
-}
-
 // Group returns a new SubRouterGroup with the given prefix.
-func (r *SubRouter[T, RequestData]) Group(prefix string) *SubRouterGroup[T, RequestData] {
+func (r *SubRouter[T, RequestData]) Group(prefix string) *subRouterGroup[T, RequestData] {
 	return r.root.Group(prefix)
 }
