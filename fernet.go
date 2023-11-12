@@ -16,7 +16,6 @@ type (
 	Router[T RequestContext] struct {
 		routes           []*route[T]
 		tree             *radical.Node[*route[T]]
-		metal            *MetalStack[T]
 		middleware       []func(context.Context, T, Handler[T])
 		initT            func(RequestContext) T
 		anyRoutesDefined bool
@@ -70,8 +69,6 @@ func New[T RequestContext, Init func(RequestContext) T](init Init) *Router[T] {
 		initT:      init,
 	}
 
-	r.metal = NewMetalStack[T](http.HandlerFunc(r.handler))
-
 	return r
 }
 
@@ -85,7 +82,7 @@ func (r *Router[T]) RawMatch(method string, path string, handler Handler[T]) {
 func (r *Router[T]) Match(method string, path string, handler Handler[T]) {
 	r.anyRoutesDefined = true
 
-	route := newRoute[T](method, path, handler)
+	route := newRoute[T](method, path, r.wrap(handler))
 	r.routes = append(r.routes, route)
 
 	pathParts := make([]string, 0, len(route.parts)+1)
@@ -120,9 +117,8 @@ func (r *Router[T]) Delete(path string, handler Handler[T]) {
 	r.Match(http.MethodDelete, path, handler)
 }
 
-// Use registers a middleware that will be run after the UseMetal middleware but
-// before the handler. Each middleware is passed the next Handler or middleware
-// in the stack. Not calling the next function will halt the middleware/handler chain.
+// Use registers a middleware that will be run before each handler, including
+// the handlers of groups and subrouters.
 func (r *Router[T]) Use(fn func(context.Context, T, Handler[T])) {
 	if r.anyRoutesDefined {
 		panic("Use can only be called before routes are defined")
@@ -139,17 +135,6 @@ func (r *Router[T]) Group(prefix string) *Group[T] {
 
 // ServeHTTP implements the http.Handler interface.
 func (r *Router[T]) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	r.metal.ServeHTTP(rw, req)
-}
-
-// Metal returns the MetalStack for this router which can be used to register
-// http based middleware that will run before the fernet middleware and
-// handlers.
-func (r *Router[T]) Metal() *MetalStack[T] {
-	return r.metal
-}
-
-func (r *Router[T]) handler(rw http.ResponseWriter, req *http.Request) {
 	// Run fernet middleware and call route handler
 	method := req.Method
 	normalizedPath := normalizeRoutePath(req.URL.Path)
@@ -174,17 +159,9 @@ func (r *Router[T]) handler(rw http.ResponseWriter, req *http.Request) {
 		}
 	} else {
 		params = map[string]string{}
-		handler = func(ctx context.Context, rctx T) {
+		handler = r.wrap(func(ctx context.Context, rctx T) {
 			rctx.Response().WriteHeader(http.StatusNotFound)
-		}
-	}
-
-	for i := len(r.middleware) - 1; i >= 0; i-- {
-		currentHandler := handler
-		middleware := r.middleware[i]
-		handler = func(ctx context.Context, reqCtx T) {
-			middleware(ctx, reqCtx, currentHandler)
-		}
+		})
 	}
 
 	res := newResponseWriter(rw)
@@ -195,4 +172,18 @@ func (r *Router[T]) handler(rw http.ResponseWriter, req *http.Request) {
 	)
 
 	res.Flush()
+}
+
+func (r *Router[T]) wrap(fn Handler[T]) func(context.Context, T) {
+	handler := fn
+
+	for i := len(r.middleware) - 1; i >= 0; i-- {
+		currentHandler := handler
+		middleware := r.middleware[i]
+		handler = func(ctx context.Context, reqCtx T) {
+			middleware(ctx, reqCtx, currentHandler)
+		}
+	}
+
+	return handler
 }
