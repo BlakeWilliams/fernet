@@ -34,13 +34,6 @@ func main() {
         return &RequestContext{RequestContext: r}
     })
 
-    // UseMetal is used to add Go http based middleware to the application.
-    app.UseMetal(func(w http.ResponseWriter, r *http.Request, next http.Handler) {
-        // Do something before the request is handled.
-        next.ServeHTTP(w, r)
-        // Do something after the request is handled.
-    })
-
     // Use is used to add fernet based middleware to the application.
     app.Use(func(ctx context.Context, r *RequestContext, next fernet.Handler[RequestContext]) {
         // Do something before the request is handled.
@@ -48,9 +41,15 @@ func main() {
         // Do something after the request is handled.
     })
 
-    app.Get("/", func(ctx context.Context, r *RequestContext) {
-        r.WriteString(http.StatusOK, "Hello World!")
+    // Fernet routing uses : to define named parameters in the path. Wildcards are also supported via *.
+    app.Get("/hello/:name", func(ctx context.Context, r *RequestContext) {
+        r.WriteString(http.StatusOK, fmt.Sprintf("Hello %s", rc.Params()["name"]))
     })
+
+    // Handle 404s by defining a catch-all route.
+    app.Get("*", func(ctx context.Context, r *RequestContext) {
+        r.WriteString(http.StatusNotFound, "Not Found")
+    }
 
     app.ListenAndServe(":3200")
 }

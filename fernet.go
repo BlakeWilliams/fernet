@@ -159,7 +159,7 @@ func (r *Router[T]) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		if !ok {
 			// This should never actually get hit in real code but would
 			// indicate a bug in the framework.
-			panic("route did not match request")
+			panic("route did not match request. this is a bug in fernet. please open an issue reporting this error and how to reproduce it.")
 		}
 	} else {
 		params = map[string]string{}

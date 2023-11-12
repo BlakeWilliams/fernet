@@ -103,3 +103,38 @@ func TestNode_MultipleDynamicChildren(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, 2, value)
 }
+
+func TestNode_Wildcards(t *testing.T) {
+	root := radical.New[int]()
+
+	root.Add([]string{"foo", "*"}, 1)
+	root.Add([]string{"foo", "bar"}, 2)
+	root.Add([]string{"foo"}, 3)
+
+	ok, value := root.Value([]string{"foo", "bar"})
+	require.True(t, ok)
+	require.Equal(t, 2, value)
+
+	ok, value = root.Value([]string{"foo", "baz"})
+	require.True(t, ok)
+	require.Equal(t, 1, value)
+
+	ok, value = root.Value([]string{"foo"})
+	require.True(t, ok)
+	require.Equal(t, 3, value)
+}
+
+func TestNode_WildcardRoot(t *testing.T) {
+	root := radical.New[int]()
+
+	root.Add([]string{"*"}, 404)
+	root.Add([]string{"foo", "bar", ":name", "hi"}, 1)
+
+	ok, value := root.Value([]string{"foo", "bar", "Fox", "hi"})
+	require.True(t, ok)
+	require.Equal(t, 1, value)
+
+	ok, value = root.Value([]string{"foo", "bar", "Fox", "hi", "there"})
+	require.True(t, ok)
+	require.Equal(t, 404, value)
+}

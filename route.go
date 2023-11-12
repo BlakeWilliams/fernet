@@ -28,6 +28,8 @@ func (r *route[C]) match(req *http.Request) (bool, map[string]string) {
 	for i, part := range r.parts {
 		if strings.HasPrefix(part, ":") {
 			params[part[1:]] = reqParts[i]
+		} else if strings.HasPrefix(part, "*") {
+			params[part[1:]] = strings.Join(reqParts[i:], "/")
 		} else if part != reqParts[i] {
 			return false, nil
 		}
