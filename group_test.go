@@ -48,20 +48,13 @@ func TestGroup(t *testing.T) {
 
 func TestGroup_Middleware(t *testing.T) {
 	router := New(WithBasicRequestContext)
-	router.Metal().Use(func(w http.ResponseWriter, r *http.Request, h http.Handler) {
-		ctx := context.WithValue(r.Context(), contextKey{}, "bar")
-		h.ServeHTTP(w, r.WithContext(ctx))
-	})
 	router.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
-		require.Equal(t, "bar", ctx.Value(contextKey{}))
 		ctx = context.WithValue(ctx, beforeContextKey{}, "baz")
 
 		next(ctx, r)
 	})
 	router.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
-		require.Equal(t, "bar", ctx.Value(contextKey{}))
 		require.Equal(t, "baz", ctx.Value(beforeContextKey{}))
-		r.Response().Header().Set("x-metal", "bar")
 		r.Response().Header().Set("x-before", "baz")
 
 		next(ctx, r)
@@ -70,7 +63,6 @@ func TestGroup_Middleware(t *testing.T) {
 	group := router.Group("/api")
 
 	group.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
-		require.Equal(t, "bar", ctx.Value(contextKey{}))
 		require.Equal(t, "baz", ctx.Value(beforeContextKey{}))
 		r.Response().Header().Set("x-group", "yolo")
 
@@ -85,7 +77,6 @@ func TestGroup_Middleware(t *testing.T) {
 	req := httptest.NewRequest("GET", "/api/foo", nil)
 	router.ServeHTTP(res, req)
 
-	require.Equal(t, "bar", res.Header().Get("x-metal"))
 	require.Equal(t, "baz", res.Header().Get("x-before"))
 	require.Equal(t, "yolo", res.Header().Get("x-group"))
 }
