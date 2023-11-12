@@ -144,3 +144,39 @@ func Test_FromRequestFalse(t *testing.T) {
 
 	require.Equal(t, http.StatusBadRequest, res.Code)
 }
+
+func Test_SubRouterBefore(t *testing.T) {
+	router := New(WithBasicRequestContext)
+
+	subrouter := NewSubRouter(router, &CommentData{})
+	subrouter.Match("GET", "/comments/:id", func(ctx context.Context, r *RootRequestContext, c *CommentData) {
+		r.Response().Header().Set("Content-Type", "application/json")
+		r.Response().WriteHeader(http.StatusCreated)
+		_, _ = r.Response().Write([]byte(fmt.Sprintf(`{"id": "%d"}`, c.ID)))
+	})
+
+	authGroup := subrouter.Group("")
+	authGroup.Before(func(ctx context.Context, r *RootRequestContext, c *CommentData) bool {
+		if r.Request().URL.Query().Get("secret") != "password" {
+			r.Response().WriteHeader(http.StatusUnauthorized)
+			return false
+		}
+		return true
+	})
+
+	authGroup.Get("/comments/sticky/:id", func(ctx context.Context, r *RootRequestContext, c *CommentData) {
+		_, _ = r.Response().Write([]byte("success"))
+	})
+
+	// Ensure original route is not gated by group
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/comments/2", nil)
+	router.ServeHTTP(res, req)
+	require.Equal(t, http.StatusCreated, res.Code)
+
+	// Ensure gate works
+	res = httptest.NewRecorder()
+	req = httptest.NewRequest("GET", "/comments/sticky/1", nil)
+	router.ServeHTTP(res, req)
+	require.Equal(t, http.StatusUnauthorized, res.Code)
+}

@@ -2,7 +2,6 @@ package fernet
 
 import (
 	"context"
-	"net/http"
 )
 
 type (
@@ -76,27 +75,27 @@ func (r *SubRouter[T, RequestData]) Match(method string, path string, fn SubRout
 
 // Get registers a GET handler with the given path.
 func (r *SubRouter[T, RequestData]) Get(path string, fn SubRouterHandler[T, RequestData]) {
-	r.Match(http.MethodGet, path, fn)
+	r.root.Get(path, fn)
 }
 
 // Post registers a POST handler with the given path.
 func (r *SubRouter[T, RequestData]) Post(path string, fn SubRouterHandler[T, RequestData]) {
-	r.Match(http.MethodPost, path, fn)
+	r.root.Post(path, fn)
 }
 
 // Put registers a PUT handler with the given path.
 func (r *SubRouter[T, RequestData]) Put(path string, fn SubRouterHandler[T, RequestData]) {
-	r.Match(http.MethodPut, path, fn)
+	r.root.Put(path, fn)
 }
 
 // Patch registers a PATCH handler with the given path.
 func (r *SubRouter[T, RequestData]) Patch(path string, fn SubRouterHandler[T, RequestData]) {
-	r.Match(http.MethodPatch, path, fn)
+	r.root.Patch(path, fn)
 }
 
 // Delete registers a DELETE handler with the given path.
 func (r *SubRouter[T, RequestData]) Delete(path string, fn SubRouterHandler[T, RequestData]) {
-	r.Match(http.MethodDelete, path, fn)
+	r.root.Delete(path, fn)
 }
 
 // Use registers a middleware function that will be called before each handler.

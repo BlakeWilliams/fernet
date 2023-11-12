@@ -7,6 +7,7 @@ import (
 )
 
 // SubRouterGroup is a group of routes from a SubRouter that share a common
+// prefix and maintain their own befores stack.
 type SubRouterGroup[T RequestContext, RequestData FromRequest[T]] struct {
 	prefix  string
 	parent  Registerable[T]
@@ -85,6 +86,12 @@ func (r *SubRouterGroup[T, RequestData]) wrap(fn SubRouterHandler[T, RequestData
 
 		if !success {
 			return
+		}
+
+		for _, before := range r.befores {
+			if !before(ctx, rc, requestData.(RequestData)) {
+				return
+			}
 		}
 
 		fn(ctx, rc, requestData.(RequestData))
