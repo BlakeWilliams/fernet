@@ -35,6 +35,7 @@ type (
 		Put(string, SubRouterHandler[T, RequestData])
 		Patch(string, SubRouterHandler[T, RequestData])
 		Delete(string, SubRouterHandler[T, RequestData])
+		Use(func(context.Context, T, Handler[T]))
 	}
 
 	placeholderFromRequest struct{}
@@ -53,9 +54,9 @@ func NewSubRouter[Parent RequestContext, RequestData FromRequest[Parent]](r Regi
 	return &SubRouter[Parent, RequestData]{
 		parent: r,
 		root: &subRouterGroup[Parent, RequestData]{
-			prefix:  "",
-			parent:  r,
-			befores: make([]func(context.Context, Parent, RequestData) bool, 0),
+			prefix:      "",
+			parent:      r,
+			middlewares: make([]func(context.Context, Parent, Handler[Parent]), 0),
 		},
 	}
 }
@@ -100,4 +101,11 @@ func (r *SubRouter[T, RequestData]) Delete(path string, fn SubRouterHandler[T, R
 // Group returns a new SubRouterGroup with the given prefix.
 func (r *SubRouter[T, RequestData]) Group(prefix string) *subRouterGroup[T, RequestData] {
 	return r.root.Group(prefix)
+}
+
+// Use registers a middleware function that will be called before each request.
+// Middlewares are always called in the order they are registered and before
+// FromRequest is called.
+func (r *SubRouter[T, RequestData]) Use(fn func(context.Context, T, Handler[T])) {
+	r.root.Use(fn)
 }

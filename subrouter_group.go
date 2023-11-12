@@ -10,9 +10,9 @@ import (
 // subRouterGroup is a group of routes from a SubRouter that share a common
 // prefix.
 type subRouterGroup[T RequestContext, RequestData FromRequest[T]] struct {
-	prefix  string
-	parent  Registerable[T]
-	befores []func(context.Context, T, RequestData) bool
+	prefix      string
+	parent      Registerable[T]
+	middlewares []func(context.Context, T, Handler[T])
 }
 
 var _ SubRouterRoutable[*RootRequestContext, *placeholderFromRequest] = &SubRouter[*RootRequestContext, *placeholderFromRequest]{}
@@ -22,13 +22,13 @@ var _ SubRouterRoutable[*RootRequestContext, *placeholderFromRequest] = &SubRout
 // subrouter.
 func (r *subRouterGroup[T, RequestData]) RawMatch(method string, path string, fn Handler[T]) {
 	path = strings.TrimSuffix(r.prefix, "/") + "/" + strings.TrimPrefix(path, "/")
-	r.parent.RawMatch(method, path, fn)
+	r.parent.RawMatch(method, path, r.wrap(fn))
 }
 
 // Match registers the given handler with the given method and path.
 func (r *subRouterGroup[T, RequestData]) Match(method string, path string, fn SubRouterHandler[T, RequestData]) {
 	path = strings.TrimSuffix(r.prefix, "/") + "/" + strings.TrimPrefix(path, "/")
-	r.parent.RawMatch(method, path, r.wrap(fn))
+	r.parent.RawMatch(method, path, r.wrap(r.normalizeHandler(fn)))
 }
 
 // Get registers a GET handler with the given path.
@@ -64,7 +64,26 @@ func (r *subRouterGroup[T, RequestData]) Group(prefix string) *subRouterGroup[T,
 	}
 }
 
-func (r *subRouterGroup[T, RequestData]) wrap(fn SubRouterHandler[T, RequestData]) Handler[T] {
+// Use registers a middleware function that will be called before each handler.
+// Middleware are always called before FromRequest.
+func (r *subRouterGroup[T, RequestData]) Use(fn func(context.Context, T, Handler[T])) {
+	r.middlewares = append(r.middlewares, fn)
+}
+
+func (r *subRouterGroup[T, RequestData]) wrap(fn Handler[T]) Handler[T] {
+	handler := fn
+
+	for _, middleware := range r.middlewares {
+		currentHandler := handler
+		handler = func(ctx context.Context, rc T) {
+			middleware(ctx, rc, currentHandler)
+		}
+	}
+
+	return handler
+}
+
+func (r *subRouterGroup[T, RequestData]) normalizeHandler(fn SubRouterHandler[T, RequestData]) Handler[T] {
 	var t RequestData
 	requestDataType := reflect.TypeOf(t)
 	isPointer := requestDataType.Kind() == reflect.Ptr

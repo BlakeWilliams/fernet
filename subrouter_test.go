@@ -165,3 +165,64 @@ func Test_SubRouterGroupPrefix(t *testing.T) {
 	router.ServeHTTP(res, req)
 	require.Equal(t, http.StatusOK, res.Code)
 }
+
+type TrackingRequestContext struct {
+	Chain []string
+	RequestContext
+}
+
+func (t *TrackingRequestContext) AddToChain(s string) {
+	t.Chain = append(t.Chain, s)
+}
+
+type TrackingData struct{}
+
+func (t *TrackingData) FromRequest(ctx context.Context, r *TrackingRequestContext) bool {
+	r.AddToChain("FromRequest")
+	return true
+}
+
+func Test_SubRouterMiddleware(t *testing.T) {
+	var tracking *TrackingRequestContext
+	router := New(func(r RequestContext) *TrackingRequestContext {
+		tracking = &TrackingRequestContext{RequestContext: r, Chain: []string{"new"}}
+		return tracking
+	})
+
+	router.Use(func(ctx context.Context, r *TrackingRequestContext, next Handler[*TrackingRequestContext]) {
+		r.AddToChain("router use")
+		next(ctx, r)
+	})
+
+	group := router.Group("/comments")
+	group.Use(func(ctx context.Context, r *TrackingRequestContext, next Handler[*TrackingRequestContext]) {
+		r.AddToChain("group use")
+		next(ctx, r)
+	})
+	subrouter := NewSubRouter(group, &TrackingData{})
+	subrouter.Use(func(ctx context.Context, r *TrackingRequestContext, next Handler[*TrackingRequestContext]) {
+		r.AddToChain("subrouter use")
+		next(ctx, r)
+	})
+	subgroup := subrouter.Group("/sub")
+	subgroup.Use(func(ctx context.Context, r *TrackingRequestContext, next Handler[*TrackingRequestContext]) {
+		r.AddToChain("subgroup use")
+		next(ctx, r)
+	})
+	subgroup.Get("/best", func(ctx context.Context, r *TrackingRequestContext, p *TrackingData) {
+		r.AddToChain("handler")
+	})
+
+	req := httptest.NewRequest("GET", "/comments/sub/best", nil)
+	res := httptest.NewRecorder()
+	router.ServeHTTP(res, req)
+
+	require.Equal(t, http.StatusOK, res.Code)
+
+	require.Equal(
+		t,
+		[]string{"new", "router use", "group use", "subrouter use", "subgroup use", "FromRequest", "handler"},
+		tracking.Chain,
+		"expected the middleware, FromRequest, and handlers to be called in order",
+	)
+}
