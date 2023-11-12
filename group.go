@@ -11,14 +11,15 @@ type (
 	Group[T RequestContext] struct {
 		prefix     string
 		middleware []func(context.Context, T, Handler[T])
-		parent     Routable[T]
+		parent     Registerable[T]
 	}
 )
 
 var _ Routable[*RootRequestContext] = (*Group[*RootRequestContext])(nil)
+var _ Registerable[*RootRequestContext] = (*Group[*RootRequestContext])(nil)
 
 // NewGroup returns a new Group instance.
-func NewGroup[T RequestContext](parent Routable[T], prefix string) *Group[T] {
+func NewGroup[T RequestContext](parent Registerable[T], prefix string) *Group[T] {
 	return &Group[T]{
 		prefix:     prefix,
 		parent:     parent,
@@ -26,10 +27,15 @@ func NewGroup[T RequestContext](parent Routable[T], prefix string) *Group[T] {
 	}
 }
 
+func (g *Group[T]) RawMatch(method string, path string, fn Handler[T]) {
+	routePath := strings.TrimSuffix(g.prefix, "/") + "/" + strings.TrimPrefix(path, "/")
+	g.parent.RawMatch(method, routePath, g.wrap(fn))
+}
+
 // Match registers a route with the given method and path
 func (g *Group[T]) Match(method string, path string, fn Handler[T]) {
 	routePath := strings.TrimSuffix(g.prefix, "/") + "/" + strings.TrimPrefix(path, "/")
-	g.parent.Match(method, routePath, g.wrap(fn))
+	g.parent.RawMatch(method, routePath, g.wrap(fn))
 }
 
 // Get registers a GET route with the given handler
