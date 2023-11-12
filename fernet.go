@@ -8,8 +8,12 @@ import (
 )
 
 type (
+	// Middleware is a function that wraps a handler and other middlewares. They
+	// accept a context, the RequestContext, and the next handler to be called.
+	// If the `next` handler is not called, the request halts.
 	Middleware[T RequestContext] func(context.Context, T, Handler[T])
 
+	// Handler is a function that handles a request.
 	Handler[T RequestContext] func(context.Context, T)
 
 	// Router represents the primary router for the application.
