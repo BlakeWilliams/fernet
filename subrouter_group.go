@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"reflect"
+	"strings"
 )
 
 // subRouterGroup is a group of routes from a SubRouter that share a common
@@ -20,11 +21,13 @@ var _ SubRouterRoutable[*RootRequestContext, *placeholderFromRequest] = &SubRout
 // parent router. This allows subrouters and groups to be registered with the
 // subrouter.
 func (r *subRouterGroup[T, RequestData]) RawMatch(method string, path string, fn Handler[T]) {
+	path = strings.TrimSuffix(r.prefix, "/") + "/" + strings.TrimPrefix(path, "/")
 	r.parent.RawMatch(method, path, fn)
 }
 
 // Match registers the given handler with the given method and path.
 func (r *subRouterGroup[T, RequestData]) Match(method string, path string, fn SubRouterHandler[T, RequestData]) {
+	path = strings.TrimSuffix(r.prefix, "/") + "/" + strings.TrimPrefix(path, "/")
 	r.parent.RawMatch(method, path, r.wrap(fn))
 }
 
@@ -56,7 +59,7 @@ func (r *subRouterGroup[T, RequestData]) Delete(path string, fn SubRouterHandler
 // Group returns a new SubRouterGroup with the given prefix.
 func (r *subRouterGroup[T, RequestData]) Group(prefix string) *subRouterGroup[T, RequestData] {
 	return &subRouterGroup[T, RequestData]{
-		prefix: r.prefix + prefix,
+		prefix: prefix,
 		parent: r,
 	}
 }

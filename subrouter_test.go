@@ -144,3 +144,24 @@ func Test_FromRequestFalse(t *testing.T) {
 
 	require.Equal(t, http.StatusBadRequest, res.Code)
 }
+
+func Test_SubRouterGroupPrefix(t *testing.T) {
+	router := New(WithBasicRequestContext)
+
+	subrouter := NewSubRouter(router, &PostData{})
+	group := subrouter.Group("/comments")
+	group.RawMatch(http.MethodGet, "/testing", func(ctx context.Context, r *RootRequestContext) {})
+	subgroup := group.Group("/sub")
+	fmt.Println("HERE")
+	subgroup.Get("/get", func(ctx context.Context, r *RootRequestContext, p *PostData) {})
+
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/comments/testing", nil)
+	router.ServeHTTP(res, req)
+	require.Equal(t, http.StatusOK, res.Code)
+
+	res = httptest.NewRecorder()
+	req = httptest.NewRequest("GET", "/comments/sub/get", nil)
+	router.ServeHTTP(res, req)
+	require.Equal(t, http.StatusOK, res.Code)
+}
