@@ -53,7 +53,9 @@ func (r *SubRouterGroup[T, RequestData]) Delete(path string, fn SubRouterHandler
 	r.Match(http.MethodDelete, path, fn)
 }
 
-// Use registers a befores function that will be called before each handler.
+// Before registers a befores function that will be called before each handler.
+// If the function returns false, the subsequent befores and the handler will
+// not be called.
 func (r *SubRouterGroup[T, RequestData]) Before(fn func(context.Context, T, RequestData) bool) {
 	r.befores = append(r.befores, fn)
 }
