@@ -183,6 +183,15 @@ func TestRouter_Params(t *testing.T) {
 	require.Equal(t, "Hello fox", res.Body.String())
 }
 
+func TestRouter_UseAfterRoute(t *testing.T) {
+	router := New(WithBasicRequestContext)
+
+	router.Get("/hello", func(ctx context.Context, r *RootRequestContext) {})
+	require.PanicsWithValue(t, "Use can only be called before routes are defined", func() {
+		router.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {})
+	})
+}
+
 func WithBasicRequestContext(rctx RequestContext) *RootRequestContext {
 	return rctx.(*RootRequestContext)
 }

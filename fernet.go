@@ -14,11 +14,12 @@ type (
 
 	// Router represents the primary router for the application.
 	Router[T RequestContext] struct {
-		routes     []*route[T]
-		tree       *radical.Node[*route[T]]
-		metal      *MetalStack[T]
-		middleware []func(context.Context, T, Handler[T])
-		initT      func(RequestContext) T
+		routes           []*route[T]
+		tree             *radical.Node[*route[T]]
+		metal            *MetalStack[T]
+		middleware       []func(context.Context, T, Handler[T])
+		initT            func(RequestContext) T
+		anyRoutesDefined bool
 	}
 
 	// Registerable is an interface that can be implemented by types that want
@@ -81,6 +82,8 @@ func (r *Router[T]) RawMatch(method string, path string, handler Handler[T]) {
 
 // Match registers a route with the router.
 func (r *Router[T]) Match(method string, path string, handler Handler[T]) {
+	r.anyRoutesDefined = true
+
 	route := newRoute[T](method, path, handler)
 	r.routes = append(r.routes, route)
 
@@ -120,6 +123,10 @@ func (r *Router[T]) Delete(path string, handler Handler[T]) {
 // before the handler. Each middleware is passed the next Handler or middleware
 // in the stack. Not calling the next function will halt the middleware/handler chain.
 func (r *Router[T]) Use(fn func(context.Context, T, Handler[T])) {
+	if r.anyRoutesDefined {
+		panic("Use can only be called before routes are defined")
+	}
+
 	r.middleware = append(r.middleware, fn)
 }
 
