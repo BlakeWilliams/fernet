@@ -138,3 +138,10 @@ func TestNode_WildcardRoot(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, 404, value)
 }
+
+func TestWildcard_LastRoute(t *testing.T) {
+	root := radical.New[int]()
+	require.PanicsWithValue(t, "wildcard segments must be the last segment in a path", func() {
+		root.Add([]string{"foo", "*", "bar"}, 1)
+	})
+}
