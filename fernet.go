@@ -21,6 +21,7 @@ type (
 		routes           []*route[T]
 		tree             *radical.Node[*route[T]]
 		middleware       []func(context.Context, T, Handler[T])
+		metal            []func(w http.ResponseWriter, r *http.Request, next http.Handler)
 		initT            func(RequestContext) T
 		anyRoutesDefined bool
 	}
@@ -131,6 +132,18 @@ func (r *Router[T]) Use(fn func(context.Context, T, Handler[T])) {
 	r.middleware = append(r.middleware, fn)
 }
 
+// UseMetal registers a "metal" middleware (net/http based) that will be run
+// before the fernet middleware stack and route handler. This is useful for
+// when the underlying http.ResponseWriter or *http.Request need to be
+// modified before fernet uses them.
+func (r *Router[T]) UseMetal(fn func(w http.ResponseWriter, r *http.Request, next http.Handler)) {
+	if r.anyRoutesDefined {
+		panic("UseMetal can only be called before routes are defined")
+	}
+
+	r.metal = append(r.metal, fn)
+}
+
 // Group returns a new route group with the given prefix. The group can define
 // its own middleware that will only be run for that group.
 func (r *Router[T]) Group(prefix string) *Group[T] {
@@ -139,43 +152,56 @@ func (r *Router[T]) Group(prefix string) *Group[T] {
 
 // ServeHTTP implements the http.Handler interface.
 func (r *Router[T]) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	// Run fernet middleware and call route handler
-	method := req.Method
-	normalizedPath := normalizeRoutePath(req.URL.Path)
-	lookup := []string{method}
-	lookup = append(lookup, normalizedPath...)
+	httpHandler := func(rw http.ResponseWriter, req *http.Request) {
+		// Run fernet middleware and call route handler
+		method := req.Method
+		normalizedPath := normalizeRoutePath(req.URL.Path)
+		lookup := []string{method}
+		lookup = append(lookup, normalizedPath...)
 
-	var handler func(context.Context, T)
-	var params map[string]string
-	var path string
+		var handler func(context.Context, T)
+		var params map[string]string
+		var path string
 
-	ok, value := r.tree.Value(lookup)
-	if ok {
-		handler = value.handler
-		path = value.Path
+		ok, value := r.tree.Value(lookup)
+		if ok {
+			handler = value.handler
+			path = value.Path
 
-		var ok bool
-		ok, params = value.match(req)
-		if !ok {
-			// This should never actually get hit in real code but would
-			// indicate a bug in the framework.
-			panic("route did not match request. this is a bug in fernet. please open an issue reporting this error and how to reproduce it.")
+			var ok bool
+			ok, params = value.match(req)
+			if !ok {
+				// This should never actually get hit in real code but would
+				// indicate a bug in the framework.
+				panic("route did not match request. this is a bug in fernet. please open an issue reporting this error and how to reproduce it.")
+			}
+		} else {
+			params = map[string]string{}
+			handler = r.wrap(func(ctx context.Context, rctx T) {
+				rctx.Response().WriteHeader(http.StatusNotFound)
+			})
 		}
-	} else {
-		params = map[string]string{}
-		handler = r.wrap(func(ctx context.Context, rctx T) {
-			rctx.Response().WriteHeader(http.StatusNotFound)
+
+		res := newResponseWriter(rw)
+		reqCtx := newRequestContext(req, res, path, params)
+		handler(
+			req.Context(),
+			r.initT(reqCtx),
+		)
+
+		res.Flush()
+	}
+
+	for i := len(r.metal) - 1; i >= 0; i-- {
+		currentHandler := httpHandler
+		m := r.metal[i]
+
+		httpHandler = http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			m(rw, req, http.HandlerFunc(currentHandler))
 		})
 	}
 
-	res := newResponseWriter(rw)
-	reqCtx := newRequestContext(req, res, path, params)
-	handler(
-		req.Context(),
-		r.initT(reqCtx),
-	)
-
-	res.Flush()
+	httpHandler(rw, req)
 }
 
 func (r *Router[T]) wrap(fn Handler[T]) func(context.Context, T) {

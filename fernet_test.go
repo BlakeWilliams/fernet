@@ -46,6 +46,23 @@ func TestRouter(t *testing.T) {
 	}
 }
 
+func TestRouter_Metal(t *testing.T) {
+	router := New(WithBasicRequestContext)
+	router.UseMetal(func(w http.ResponseWriter, r *http.Request, next http.Handler) {
+		fmt.Println("YO")
+		w.Header().Set("X-Foo", "bar")
+		next.ServeHTTP(w, r)
+	})
+
+	router.Get("/", func(ctx context.Context, r *RootRequestContext) {})
+
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/", nil)
+
+	router.ServeHTTP(res, req)
+	require.Equal(t, "bar", res.Header().Get("X-Foo"))
+}
+
 func TestRouter_Root(t *testing.T) {
 	router := New(WithBasicRequestContext)
 

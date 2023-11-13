@@ -152,7 +152,6 @@ func Test_SubRouterGroupPrefix(t *testing.T) {
 	group := subrouter.Group("/comments")
 	group.RawMatch(http.MethodGet, "/testing", func(ctx context.Context, r *RootRequestContext) {})
 	subgroup := group.Group("/sub")
-	fmt.Println("HERE")
 	subgroup.Get("/get", func(ctx context.Context, r *RootRequestContext, p *PostData) {})
 
 	res := httptest.NewRecorder()
