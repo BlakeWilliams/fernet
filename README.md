@@ -144,4 +144,12 @@ Fernet provides a few middleware functions out of the box. Import the
 - `middleware.ErrorHandler` - rescues panics and calls a `Handler[T]` to handle
   the error.
 - `middleware.Logger` - logs requests and responses using slog.
-- `middleware.MethodRewrite` - Rewrites the HTTP method based on the value of the `_method` form value.
+
+## Metal
+
+Fernet provides `Metal` handlers, which operate against net/http `Request` and
+`ResponseWriter` types. These handlers are useful for integrating with existing
+middleware and libraries or modifying the request/response before it is passed
+to the `RequestContext` handler.
+
+- `metal.MethodRewrite` - Rewrites the HTTP method based on the value of the `_method` form value.
