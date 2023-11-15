@@ -55,9 +55,12 @@ func main() {
 }
 ```
 
-## SubRouters
+## Controllers
 
-SubRouters are similar to the regular router and `Group` types, but SubRouter handlers accept a third argument that implements `FromRequest`. This allows you to define a type that can be used to extract data from the request and pass it to the handler. e.g.
+Controllers allow you to group related handlers together using a struct that is
+initialized each request and passed to the handler as an additional argument.
+This allows you to extract data from the request and pass it to the handler
+after common behavior like fetching records and authorization. e.g.
 
 ```go
 // Define a type that implements FromRequest and can store the team record.
@@ -87,13 +90,24 @@ func Show(ctx context.Context, rc *AppRequestContext, td *TeamData) {
     rc.RenderJSON(http.StatusOK, td.Team)
 }
 
-// Setup the router and subrouter.
+// Setup the router
 router := fernet.New(func(r *fernet.RequestContext) *AppRequestContext {
     return &AppRequestContext{RequestContext: r}
 })
 
-teamsRouter := app.SubRouter(router, *TeamData{})
+teamsRouter := fernet.Controller(router, *TeamData{})
 teamsRouter.Get("/teams/:team_id", Show)
+
+adminTeamRouter := teamsRouter.Group("/admin")
+adminTeamRouter.Use(func(ctx context.Context, rc *AppRequestContext, next fernet.Handler[AppRequestContext]) {
+    if rc.CurrentUser.Role != "admin" {
+        rc.Render403()
+        return
+    }
+
+    next(ctx, rc)
+})
+adminTeamRouter.Get("/teams/:team_id/settings", Update)
 ```
 
 ## Groups

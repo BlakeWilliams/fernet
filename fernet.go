@@ -28,7 +28,7 @@ type (
 
 	// Registerable is an interface that can be implemented by types that want
 	// to register routes with a router. This allows the router to be extended
-	// by internal or external packages like Group, and SubRouter.
+	// by internal or external packages like Group, and Controller.
 	Registerable[T RequestContext] interface {
 		// RawMatch registers a route with the given method and path
 		RawMatch(method string, path string, fn Handler[T])
@@ -123,7 +123,7 @@ func (r *Router[T]) Delete(path string, handler Handler[T]) {
 }
 
 // Use registers a middleware that will be run before each handler, including
-// the handlers of groups and subrouters.
+// the handlers of groups and controllers.
 func (r *Router[T]) Use(fn func(context.Context, T, Handler[T])) {
 	if r.anyRoutesDefined {
 		panic("Use can only be called before routes are defined")

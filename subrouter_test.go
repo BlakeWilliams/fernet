@@ -36,9 +36,9 @@ func (c *CommentData) FromRequest(ctx context.Context, r *RootRequestContext) bo
 	return true
 }
 
-func TestSubRouter(t *testing.T) {
+func TestController(t *testing.T) {
 	router := New(WithBasicRequestContext)
-	subrouter := NewSubRouter(router, &PostData{})
+	controller := NewController(router, &PostData{})
 
 	handler := func(ctx context.Context, r *RootRequestContext, postData *PostData) {
 		r.Response().Header().Set("Content-Type", "application/json")
@@ -47,14 +47,14 @@ func TestSubRouter(t *testing.T) {
 	}
 
 	tests := map[string]struct {
-		routerFn func(string, SubRouterHandler[*RootRequestContext, *PostData])
+		routerFn func(string, ControllerHandler[*RootRequestContext, *PostData])
 		method   string
 	}{
-		"GET":    {method: http.MethodGet, routerFn: subrouter.Get},
-		"POST":   {method: http.MethodPost, routerFn: subrouter.Post},
-		"PUT":    {method: http.MethodPut, routerFn: subrouter.Put},
-		"PATCH":  {method: http.MethodPatch, routerFn: subrouter.Patch},
-		"DELETE": {method: http.MethodDelete, routerFn: subrouter.Delete},
+		"GET":    {method: http.MethodGet, routerFn: controller.Get},
+		"POST":   {method: http.MethodPost, routerFn: controller.Post},
+		"PUT":    {method: http.MethodPut, routerFn: controller.Put},
+		"PATCH":  {method: http.MethodPatch, routerFn: controller.Patch},
+		"DELETE": {method: http.MethodDelete, routerFn: controller.Delete},
 	}
 
 	for testName, tc := range tests {
@@ -73,11 +73,11 @@ func TestSubRouter(t *testing.T) {
 	}
 }
 
-func TestSubRouter_Routing(t *testing.T) {
+func TestController_Routing(t *testing.T) {
 	router := New(WithBasicRequestContext)
 
-	subrouter := NewSubRouter(router, &PostData{})
-	subrouter.Match("GET", "/", func(ctx context.Context, r *RootRequestContext, p *PostData) {
+	controller := NewController(router, &PostData{})
+	controller.Match("GET", "/", func(ctx context.Context, r *RootRequestContext, p *PostData) {
 		r.Response().Header().Set("Content-Type", "application/json")
 		r.Response().WriteHeader(http.StatusCreated)
 		_, _ = r.Response().Write([]byte(fmt.Sprintf(`{"id": "%d"}`, p.ID)))
@@ -97,13 +97,13 @@ func TestSubRouter_Routing(t *testing.T) {
 	require.Equal(t, `{"id": "1"}`, res.Body.String())
 }
 
-func Test_SubRouterSubRouter(t *testing.T) {
+func Test_NestedController(t *testing.T) {
 	router := New(WithBasicRequestContext)
 
-	subrouter := NewSubRouter(router, &PostData{})
-	subsubrouter := NewSubRouter(subrouter, &CommentData{})
+	postController := NewController(router, &PostData{})
+	commentController := NewController(postController, &CommentData{})
 
-	subsubrouter.Match("GET", "/comments/:id", func(ctx context.Context, r *RootRequestContext, c *CommentData) {
+	commentController.Match("GET", "/comments/:id", func(ctx context.Context, r *RootRequestContext, c *CommentData) {
 		r.Response().Header().Set("Content-Type", "application/json")
 		r.Response().WriteHeader(http.StatusCreated)
 		_, _ = r.Response().Write([]byte(fmt.Sprintf(`{"id": "%d"}`, c.ID)))
@@ -126,8 +126,8 @@ func Test_SubRouterSubRouter(t *testing.T) {
 func Test_FromRequestFalse(t *testing.T) {
 	router := New(WithBasicRequestContext)
 
-	subrouter := NewSubRouter(router, &CommentData{})
-	subrouter.Match("GET", "/comments/:id", func(ctx context.Context, r *RootRequestContext, p *CommentData) {
+	commentController := NewController(router, &CommentData{})
+	commentController.Match("GET", "/comments/:id", func(ctx context.Context, r *RootRequestContext, p *CommentData) {
 		r.Response().Header().Set("Content-Type", "application/json")
 		r.Response().WriteHeader(http.StatusCreated)
 		_, _ = r.Response().Write([]byte(fmt.Sprintf(`{"id": "%d"}`, p.ID)))
@@ -145,11 +145,11 @@ func Test_FromRequestFalse(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, res.Code)
 }
 
-func Test_SubRouterGroupPrefix(t *testing.T) {
+func Test_ControllerGroupPrefix(t *testing.T) {
 	router := New(WithBasicRequestContext)
 
-	subrouter := NewSubRouter(router, &PostData{})
-	group := subrouter.Group("/comments")
+	controller := NewController(router, &PostData{})
+	group := controller.Group("/comments")
 	group.RawMatch(http.MethodGet, "/testing", func(ctx context.Context, r *RootRequestContext) {})
 	subgroup := group.Group("/sub")
 	subgroup.Get("/get", func(ctx context.Context, r *RootRequestContext, p *PostData) {})
@@ -181,7 +181,7 @@ func (t *TrackingData) FromRequest(ctx context.Context, r *TrackingRequestContex
 	return true
 }
 
-func Test_SubRouterMiddleware(t *testing.T) {
+func Test_ControllerMiddleware(t *testing.T) {
 	var tracking *TrackingRequestContext
 	router := New(func(r RequestContext) *TrackingRequestContext {
 		tracking = &TrackingRequestContext{RequestContext: r, Chain: []string{"new"}}
@@ -198,17 +198,17 @@ func Test_SubRouterMiddleware(t *testing.T) {
 		r.AddToChain("group use")
 		next(ctx, r)
 	})
-	subrouter := NewSubRouter(group, &TrackingData{})
-	subrouter.Use(func(ctx context.Context, r *TrackingRequestContext, next Handler[*TrackingRequestContext]) {
-		r.AddToChain("subrouter use")
+	controller := NewController(group, &TrackingData{})
+	controller.Use(func(ctx context.Context, r *TrackingRequestContext, next Handler[*TrackingRequestContext]) {
+		r.AddToChain("controller use")
 		next(ctx, r)
 	})
-	subgroup := subrouter.Group("/sub")
-	subgroup.Use(func(ctx context.Context, r *TrackingRequestContext, next Handler[*TrackingRequestContext]) {
+	subGroup := controller.Group("/sub")
+	subGroup.Use(func(ctx context.Context, r *TrackingRequestContext, next Handler[*TrackingRequestContext]) {
 		r.AddToChain("subgroup use")
 		next(ctx, r)
 	})
-	subgroup.Get("/best", func(ctx context.Context, r *TrackingRequestContext, p *TrackingData) {
+	subGroup.Get("/best", func(ctx context.Context, r *TrackingRequestContext, p *TrackingData) {
 		r.AddToChain("handler")
 	})
 
@@ -220,7 +220,7 @@ func Test_SubRouterMiddleware(t *testing.T) {
 
 	require.Equal(
 		t,
-		[]string{"new", "router use", "group use", "subrouter use", "subgroup use", "FromRequest", "handler"},
+		[]string{"new", "router use", "group use", "controller use", "subgroup use", "FromRequest", "handler"},
 		tracking.Chain,
 		"expected the middleware, FromRequest, and handlers to be called in order",
 	)
