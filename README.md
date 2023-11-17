@@ -95,11 +95,11 @@ router := fernet.New(func(r *fernet.RequestContext) *AppRequestContext {
     return &AppRequestContext{RequestContext: r}
 })
 
-teamsRouter := fernet.Controller(router, *TeamData{})
-teamsRouter.Get("/teams/:team_id", Show)
+teamsController := fernet.Controller(router, *TeamData{})
+teamsController.Get("/teams/:team_id", Show)
 
-adminTeamRouter := teamsRouter.Group("/admin")
-adminTeamRouter.Use(func(ctx context.Context, rc *AppRequestContext, next fernet.Handler[AppRequestContext]) {
+adminTeamController := teamsRouter.Group("/admin")
+adminTeamController.Use(func(ctx context.Context, rc *AppRequestContext, next fernet.Handler[AppRequestContext]) {
     if rc.CurrentUser.Role != "admin" {
         rc.Render403()
         return
@@ -107,7 +107,7 @@ adminTeamRouter.Use(func(ctx context.Context, rc *AppRequestContext, next fernet
 
     next(ctx, rc)
 })
-adminTeamRouter.Get("/teams/:team_id/settings", Update)
+adminTeamController.Get("/teams/:team_id/settings", Update)
 ```
 
 ## Groups
