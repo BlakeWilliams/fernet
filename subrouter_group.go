@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"reflect"
-	"strings"
 )
 
 // controllerGroup is a group of routes from a controller that share a common
@@ -21,14 +20,12 @@ var _ ControllerRoutable[*RootRequestContext, *placeholderFromRequest] = &Contro
 // parent router. This allows other controllers and controller groups to be
 // registered with the controller.
 func (r *controllerGroup[T, RequestData]) RawMatch(method string, path string, fn Handler[T]) {
-	path = strings.TrimSuffix(r.prefix, "/") + "/" + strings.TrimPrefix(path, "/")
-	r.parent.RawMatch(method, path, r.wrap(fn))
+	r.parent.RawMatch(method, joinURL(r.prefix, path), r.wrap(fn))
 }
 
 // Match registers the given handler with the given method and path.
 func (r *controllerGroup[T, RequestData]) Match(method string, path string, fn ControllerHandler[T, RequestData]) {
-	path = strings.TrimSuffix(r.prefix, "/") + "/" + strings.TrimPrefix(path, "/")
-	r.parent.RawMatch(method, path, r.wrap(r.normalizeHandler(fn)))
+	r.parent.RawMatch(method, joinURL(r.prefix, path), r.wrap(r.normalizeHandler(fn)))
 }
 
 // Get registers a GET handler with the given path.

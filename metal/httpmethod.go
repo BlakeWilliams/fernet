@@ -1,7 +1,6 @@
 package metal
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 )
@@ -16,8 +15,6 @@ func MethodRewrite(rw http.ResponseWriter, r *http.Request, next http.Handler) {
 			r.Method = strings.ToUpper(method)
 		}
 	}
-
-	fmt.Println(r.Method)
 
 	next.ServeHTTP(rw, r)
 }

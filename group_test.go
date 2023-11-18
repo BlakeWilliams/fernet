@@ -107,3 +107,18 @@ func TestGroup_NestedGroup(t *testing.T) {
 
 	require.Equal(t, "v1", res.Header().Get("x-subgroup"))
 }
+
+func TestGroup_PrefixRoot(t *testing.T) {
+	router := New(WithBasicRequestContext)
+
+	group := router.Group("/foo")
+	group.Get("/", func(ctx context.Context, r *RootRequestContext) {
+		r.Response().WriteHeader(http.StatusOK)
+	})
+
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/foo", nil)
+	router.ServeHTTP(res, req)
+
+	require.Equal(t, http.StatusOK, res.Code)
+}

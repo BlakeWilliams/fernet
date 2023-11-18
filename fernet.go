@@ -3,6 +3,7 @@ package fernet
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/blakewilliams/fernet/internal/radical"
 )
@@ -216,4 +217,20 @@ func (r *Router[T]) wrap(fn Handler[T]) func(context.Context, T) {
 	}
 
 	return handler
+}
+
+func joinURL(prefix string, path string) string {
+	if prefix == "" {
+		return path
+	}
+
+	if path == "" {
+		return prefix
+	}
+
+	if path == "/" {
+		return prefix
+	}
+
+	return strings.TrimSuffix(prefix, "/") + "/" + strings.TrimPrefix(path, "/")
 }

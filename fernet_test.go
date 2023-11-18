@@ -49,7 +49,6 @@ func TestRouter(t *testing.T) {
 func TestRouter_Metal(t *testing.T) {
 	router := New(WithBasicRequestContext)
 	router.UseMetal(func(w http.ResponseWriter, r *http.Request, next http.Handler) {
-		fmt.Println("YO")
 		w.Header().Set("X-Foo", "bar")
 		next.ServeHTTP(w, r)
 	})
@@ -176,7 +175,6 @@ func TestRouter_Wildcard(t *testing.T) {
 	router := New(WithBasicRequestContext)
 
 	router.Get("*", func(ctx context.Context, r *RootRequestContext) {
-		fmt.Println(r.Params())
 		_, _ = r.Response().Write([]byte("Not found!"))
 		r.Response().WriteHeader(http.StatusNotFound)
 	})

@@ -225,3 +225,18 @@ func Test_ControllerMiddleware(t *testing.T) {
 		"expected the middleware, FromRequest, and handlers to be called in order",
 	)
 }
+
+func TestControllerGroup_PrefixRoot(t *testing.T) {
+	router := New(WithBasicRequestContext)
+
+	controller := NewController(router, &PostData{}).Group("/foo")
+	controller.Get("/", func(ctx context.Context, r *RootRequestContext, p *PostData) {
+		r.Response().WriteHeader(http.StatusOK)
+	})
+
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/foo", nil)
+	router.ServeHTTP(res, req)
+
+	require.Equal(t, http.StatusOK, res.Code)
+}

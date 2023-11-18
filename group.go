@@ -3,7 +3,6 @@ package fernet
 import (
 	"context"
 	"net/http"
-	"strings"
 )
 
 type (
@@ -28,14 +27,12 @@ func NewGroup[T RequestContext](parent Registerable[T], prefix string) *Group[T]
 }
 
 func (g *Group[T]) RawMatch(method string, path string, fn Handler[T]) {
-	routePath := strings.TrimSuffix(g.prefix, "/") + "/" + strings.TrimPrefix(path, "/")
-	g.parent.RawMatch(method, routePath, g.wrap(fn))
+	g.parent.RawMatch(method, joinURL(g.prefix, path), g.wrap(fn))
 }
 
 // Match registers a route with the given method and path
 func (g *Group[T]) Match(method string, path string, fn Handler[T]) {
-	routePath := strings.TrimSuffix(g.prefix, "/") + "/" + strings.TrimPrefix(path, "/")
-	g.parent.RawMatch(method, routePath, g.wrap(fn))
+	g.parent.RawMatch(method, joinURL(g.prefix, path), g.wrap(fn))
 }
 
 // Get registers a GET route with the given handler
