@@ -38,6 +38,10 @@ func (r *route[C]) match(req *http.Request) (bool, map[string]string) {
 	return true, params
 }
 
+func (r *route[C]) isWildcard() bool {
+	return r.parts[len(r.parts)-1] == "*"
+}
+
 func newRoute[T RequestContext](method string, path string, handler Handler[T]) *route[T] {
 	parts := normalizeRoutePath(path)
 

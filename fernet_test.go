@@ -187,6 +187,25 @@ func TestRouter_Wildcard(t *testing.T) {
 	require.Equal(t, "Not found!", res.Body.String())
 }
 
+func TestRouter_Wildcard_PanicBug(t *testing.T) {
+	router := New(WithBasicRequestContext)
+
+	router.Get("*", func(ctx context.Context, r *RootRequestContext) {
+		_, _ = r.Response().Write([]byte("Not found!"))
+		r.Response().WriteHeader(http.StatusNotFound)
+	})
+
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/foo/bar", nil)
+
+	require.NotPanics(t, func() {
+		router.ServeHTTP(res, req)
+	})
+
+	require.Equal(t, http.StatusNotFound, res.Code)
+	require.Equal(t, "Not found!", res.Body.String())
+}
+
 func WithBasicRequestContext(rctx RequestContext) *RootRequestContext {
 	return rctx.(*RootRequestContext)
 }

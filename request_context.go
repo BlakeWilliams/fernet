@@ -30,10 +30,10 @@ type RootRequestContext struct {
 
 var _ RequestContext = (*RootRequestContext)(nil)
 
-func newRequestContext(req *http.Request, res Response, matchedPath string, params map[string]string) *RootRequestContext {
+func NewRequestContext(req *http.Request, res http.ResponseWriter, matchedPath string, params map[string]string) *RootRequestContext {
 	return &RootRequestContext{
 		req:         req,
-		res:         res,
+		res:         newResponseWriter(res),
 		matchedPath: matchedPath,
 		params:      params,
 	}
@@ -42,6 +42,7 @@ func newRequestContext(req *http.Request, res Response, matchedPath string, para
 func (r *RootRequestContext) Request() *http.Request {
 	return r.req
 }
+
 func (r *RootRequestContext) Response() Response {
 	return r.res
 }

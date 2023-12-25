@@ -68,7 +68,7 @@ var _ Registerable[*RootRequestContext] = (*Router[*RootRequestContext])(nil)
 // New returns a new router with the given RequestContext type. The function
 // passed to this function is used to initialize the RequestContext for each
 // request which is then passed to the relevant route handler.
-func New[T RequestContext, Init func(RequestContext) T](init Init) *Router[T] {
+func New[T RequestContext](init func(RequestContext) T) *Router[T] {
 	r := &Router[T]{
 		tree:       radical.New[*route[T]](),
 		middleware: make([]func(context.Context, T, Handler[T]), 0),
@@ -171,7 +171,7 @@ func (r *Router[T]) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 			var ok bool
 			ok, params = value.match(req)
-			if !ok {
+			if !ok && !value.isWildcard() {
 				// This should never actually get hit in real code but would
 				// indicate a bug in the framework.
 				panic("route did not match request. this is a bug in fernet. please open an issue reporting this error and how to reproduce it.")
@@ -183,14 +183,13 @@ func (r *Router[T]) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			})
 		}
 
-		res := newResponseWriter(rw)
-		reqCtx := newRequestContext(req, res, path, params)
+		reqCtx := NewRequestContext(req, rw, path, params)
 		handler(
 			req.Context(),
 			r.initT(reqCtx),
 		)
 
-		res.Flush()
+		reqCtx.Response().Flush()
 	}
 
 	for i := len(r.metal) - 1; i >= 0; i-- {
