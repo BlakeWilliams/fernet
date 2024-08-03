@@ -145,3 +145,22 @@ func TestWildcard_LastRoute(t *testing.T) {
 		root.Add([]string{"foo", "*", "bar"}, 1)
 	})
 }
+
+func TestNode_DynamicEdgeCases(t *testing.T) {
+	root := radical.New[int]()
+	// Simulate /foo/bar/baz
+	root.Add([]string{"foo", ":bar", "baz"}, 1)
+	// duplicate routes should panic
+	require.Panics(t, func() {
+		root.Add([]string{"foo", ":bar", "baz"}, 2)
+	})
+	ok, value := root.Value([]string{"foo", "bar", "baz"})
+	require.True(t, ok)
+	require.Equal(t, 1, value)
+
+	// Add route that overlaps with different named parameter
+	root.Add([]string{"foo", ":bar", "baz", "quux"}, 3)
+	ok, value = root.Value([]string{"foo", "anything", "baz", "quux"})
+	require.True(t, ok)
+	require.Equal(t, 3, value)
+}

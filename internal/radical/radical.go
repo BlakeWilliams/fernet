@@ -3,6 +3,7 @@
 package radical
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 )
@@ -83,6 +84,10 @@ func (n *Node[T]) Add(segments []string, value T) {
 		}
 
 		currentSegment = currentSegment.children[segment]
+	}
+
+	if currentSegment.isSet {
+		panic(fmt.Sprintf("duplicate route detected: %v", segments))
 	}
 
 	currentSegment.value = value
