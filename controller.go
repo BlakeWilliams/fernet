@@ -35,7 +35,7 @@ type (
 		Put(string, ControllerHandler[T, RequestData])
 		Patch(string, ControllerHandler[T, RequestData])
 		Delete(string, ControllerHandler[T, RequestData])
-		Use(func(context.Context, T, Handler[T]))
+		Use(...func(context.Context, T, Handler[T]))
 	}
 
 	placeholderFromRequest struct{}
@@ -111,6 +111,6 @@ func (r *Controller[T, RequestData]) Namespace(prefix string) *controllerGroup[T
 // Use registers a middleware function that will be called before each request.
 // Middlewares are always called in the order they are registered and before
 // FromRequest is called.
-func (r *Controller[T, RequestData]) Use(fn func(context.Context, T, Handler[T])) {
-	r.root.Use(fn)
+func (r *Controller[T, RequestData]) Use(fns ...func(context.Context, T, Handler[T])) {
+	r.root.Use(fns...)
 }

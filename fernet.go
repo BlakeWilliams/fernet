@@ -53,7 +53,7 @@ type (
 
 		// Use registers a middleware function that is run before each request
 		// for this group and all groups below it.
-		Use(func(context.Context, T, Handler[T]))
+		Use(...func(context.Context, T, Handler[T]))
 
 		// Group returns a new group based on this Routable. It will have its
 		// own middleware stack in addition to the middleware stack on the
@@ -127,26 +127,26 @@ func (r *Router[T]) Delete(path string, handler Handler[T]) {
 	r.Match(http.MethodDelete, path, handler)
 }
 
-// Use registers a middleware that will be run before each handler, including
+// Use registers middleware that will be run before each handler, including
 // the handlers of groups and controllers.
-func (r *Router[T]) Use(fn func(context.Context, T, Handler[T])) {
+func (r *Router[T]) Use(fns ...func(context.Context, T, Handler[T])) {
 	if r.anyRoutesDefined {
 		panic("Use can only be called before routes are defined")
 	}
 
-	r.middleware = append(r.middleware, fn)
+	r.middleware = append(r.middleware, fns...)
 }
 
-// UseMetal registers a "metal" middleware (net/http based) that will be run
+// UseMetal registers "metal" middleware (net/http based) that will be run
 // before the fernet middleware stack and route handler. This is useful for
 // when the underlying http.ResponseWriter or *http.Request need to be
 // modified before fernet uses them.
-func (r *Router[T]) UseMetal(fn func(w http.ResponseWriter, r *http.Request, next http.Handler)) {
+func (r *Router[T]) UseMetal(fns ...func(w http.ResponseWriter, r *http.Request, next http.Handler)) {
 	if r.anyRoutesDefined {
 		panic("UseMetal can only be called before routes are defined")
 	}
 
-	r.metal = append(r.metal, fn)
+	r.metal = append(r.metal, fns...)
 }
 
 // Group returns a new route group that can define its own middleware

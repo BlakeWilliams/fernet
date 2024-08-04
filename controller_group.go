@@ -70,8 +70,8 @@ func (r *controllerGroup[T, RequestData]) Namespace(prefix string) *controllerGr
 
 // Use registers a middleware function that will be called before each handler.
 // Middleware are always called before FromRequest.
-func (r *controllerGroup[T, RequestData]) Use(fn func(context.Context, T, Handler[T])) {
-	r.middlewares = append(r.middlewares, fn)
+func (r *controllerGroup[T, RequestData]) Use(fns ...func(context.Context, T, Handler[T])) {
+	r.middlewares = append(r.middlewares, fns...)
 }
 
 func (r *controllerGroup[T, RequestData]) wrap(fn Handler[T]) Handler[T] {

@@ -60,9 +60,9 @@ func (g *Group[T]) Delete(path string, fn Handler[T]) {
 	g.Match(http.MethodDelete, path, fn)
 }
 
-// Use registers a middleware that will run before the handlers of this group and subgroups.
-func (g *Group[T]) Use(fn func(context.Context, T, Handler[T])) {
-	g.middleware = append(g.middleware, fn)
+// Use registers middleware that will run before the handlers of this group and subgroups.
+func (g *Group[T]) Use(fns ...func(context.Context, T, Handler[T])) {
+	g.middleware = append(g.middleware, fns...)
 }
 
 // Namespace returns a new route group with a prefix that will be applied to all
