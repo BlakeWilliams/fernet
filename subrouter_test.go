@@ -149,9 +149,9 @@ func Test_ControllerGroupPrefix(t *testing.T) {
 	router := New(WithBasicRequestContext)
 
 	controller := NewController(router, &PostData{})
-	group := controller.Group("/comments")
+	group := controller.Namespace("/comments")
 	group.RawMatch(http.MethodGet, "/testing", func(ctx context.Context, r *RootRequestContext) {})
-	subgroup := group.Group("/sub")
+	subgroup := group.Namespace("/sub")
 	subgroup.Get("/get", func(ctx context.Context, r *RootRequestContext, p *PostData) {})
 
 	res := httptest.NewRecorder()
@@ -193,7 +193,7 @@ func Test_ControllerMiddleware(t *testing.T) {
 		next(ctx, r)
 	})
 
-	group := router.Group("/comments")
+	group := router.Namespace("/comments")
 	group.Use(func(ctx context.Context, r *TrackingRequestContext, next Handler[*TrackingRequestContext]) {
 		r.AddToChain("group use")
 		next(ctx, r)
@@ -203,7 +203,7 @@ func Test_ControllerMiddleware(t *testing.T) {
 		r.AddToChain("controller use")
 		next(ctx, r)
 	})
-	subGroup := controller.Group("/sub")
+	subGroup := controller.Namespace("/sub")
 	subGroup.Use(func(ctx context.Context, r *TrackingRequestContext, next Handler[*TrackingRequestContext]) {
 		r.AddToChain("subgroup use")
 		next(ctx, r)
@@ -229,7 +229,7 @@ func Test_ControllerMiddleware(t *testing.T) {
 func TestControllerGroup_PrefixRoot(t *testing.T) {
 	router := New(WithBasicRequestContext)
 
-	controller := NewController(router, &PostData{}).Group("/foo")
+	controller := NewController(router, &PostData{}).Namespace("/foo")
 	controller.Get("/", func(ctx context.Context, r *RootRequestContext, p *PostData) {
 		r.Response().WriteHeader(http.StatusOK)
 	})

@@ -65,10 +65,17 @@ func (g *Group[T]) Use(fn func(context.Context, T, Handler[T])) {
 	g.middleware = append(g.middleware, fn)
 }
 
-// Group returns a new route group with the given prefix. The group can define
-// its own middleware that will only be run for that group.
-func (g *Group[T]) Group(prefix string) *Group[T] {
+// Namespace returns a new route group with a prefix that will be applied to all
+// routes registered with the group. It also allows for the definition of
+// middleware that will only be run for that group and its subgroups.
+func (g *Group[T]) Namespace(prefix string) *Group[T] {
 	return NewGroup[T](g, prefix)
+}
+
+// Group returns a new route group that can define its own middleware that will
+// only be run for that group and its subgroups.
+func (g *Group[T]) Group() *Group[T] {
+	return NewGroup[T](g, "")
 }
 
 // wrap takes a Handler and ensures that this groups middleware is run before the handler is called

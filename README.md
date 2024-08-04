@@ -98,7 +98,7 @@ router := fernet.New(func(r *fernet.RequestContext) *AppRequestContext {
 teamsController := fernet.Controller(router, *TeamData{})
 teamsController.Get("/teams/:team_id", Show)
 
-adminTeamController := teamsRouter.Group("/admin")
+adminTeamController := teamsRouter.Namespace("/admin")
 adminTeamController.Use(func(ctx context.Context, rc *AppRequestContext, next fernet.Handler[AppRequestContext]) {
     if rc.CurrentUser.Role != "admin" {
         rc.Render403()
@@ -110,9 +110,9 @@ adminTeamController.Use(func(ctx context.Context, rc *AppRequestContext, next fe
 adminTeamController.Get("/teams/:team_id/settings", Update)
 ```
 
-## Groups
+## Groups and Namespaces
 
-Groups are used to group routes together and apply middleware common only to those groups and subgroups
+Groups are used to group routes together and apply middleware common only to those groups and subgroups. Namespaces are exactly like groups, but accept a prefix string that is prepended to all routes within the namespace.
 
 ```go
 type RequestContext struct {
@@ -129,7 +129,7 @@ app := fernet.New(func(r *fernet.RequestContext) *RequestContext {
     return &RequestContext{RequestContext: r}
 })
 
-authGroup := router.Group("")
+authGroup := router.Group()
 authGroup.Use(func(ctx context.Context, r *RequestContext, next fernet.Handler[RequestContext]) {
     if r.AppData.currentUser == nil {
         r.RenderString(http.StatusUnauthorized, "Unauthorized")
@@ -139,7 +139,7 @@ authGroup.Use(func(ctx context.Context, r *RequestContext, next fernet.Handler[R
     next(ctx, r)
 })
 
-adminGroup := authGroup.Group("/admin")
+adminGroup := authGroup.Namespace("/admin")
 adminGroup.Use(func(ctx context.Context, r *RequestContext, next fernet.Handler[RequestContext]) {
     if r.AppData.currentUser == nil || r.AppData.currentUser.Role != "admin" {
         r.RenderString(http.StatusUnauthorized, "Unauthorized")

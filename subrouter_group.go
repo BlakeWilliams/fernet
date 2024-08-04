@@ -54,7 +54,14 @@ func (r *controllerGroup[T, RequestData]) Delete(path string, fn ControllerHandl
 }
 
 // Group returns a new controller group with the given prefix.
-func (r *controllerGroup[T, RequestData]) Group(prefix string) *controllerGroup[T, RequestData] {
+func (r *controllerGroup[T, RequestData]) Group() *controllerGroup[T, RequestData] {
+	return &controllerGroup[T, RequestData]{
+		parent: r,
+	}
+}
+
+// Namespace returns a new controller group with the given prefix.
+func (r *controllerGroup[T, RequestData]) Namespace(prefix string) *controllerGroup[T, RequestData] {
 	return &controllerGroup[T, RequestData]{
 		prefix: prefix,
 		parent: r,

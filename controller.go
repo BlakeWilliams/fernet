@@ -98,9 +98,14 @@ func (r *Controller[T, RequestData]) Delete(path string, fn ControllerHandler[T,
 	r.root.Delete(path, fn)
 }
 
-// Group returns a new ControllerGroup with the given prefix.
-func (r *Controller[T, RequestData]) Group(prefix string) *controllerGroup[T, RequestData] {
-	return r.root.Group(prefix)
+// Group returns a new ControllerGroup.
+func (r *Controller[T, RequestData]) Group() *controllerGroup[T, RequestData] {
+	return r.root.Group()
+}
+
+// Namespace returns a new ControllerGroup with the given prefix applied to all routes defined on it.
+func (r *Controller[T, RequestData]) Namespace(prefix string) *controllerGroup[T, RequestData] {
+	return r.root.Namespace(prefix)
 }
 
 // Use registers a middleware function that will be called before each request.

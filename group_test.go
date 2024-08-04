@@ -11,7 +11,7 @@ import (
 
 func TestGroup(t *testing.T) {
 	router := New(WithBasicRequestContext)
-	group := router.Group("/api/")
+	group := router.Namespace("/api/")
 
 	handler := func(ctx context.Context, r *RootRequestContext) {
 		r.Response().Header().Set("Content-Type", "application/json")
@@ -60,7 +60,7 @@ func TestGroup_Middleware(t *testing.T) {
 		next(ctx, r)
 	})
 
-	group := router.Group("/api")
+	group := router.Namespace("/api")
 
 	group.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
 		require.Equal(t, "baz", ctx.Value(beforeContextKey{}))
@@ -83,8 +83,8 @@ func TestGroup_Middleware(t *testing.T) {
 
 func TestGroup_NestedGroup(t *testing.T) {
 	router := New(WithBasicRequestContext)
-	group := router.Group("/api")
-	subgroup := group.Group("/v1")
+	group := router.Namespace("/api")
+	subgroup := group.Namespace("/v1")
 
 	group.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
 		ctx = context.WithValue(ctx, contextKey{}, "foo")
@@ -111,7 +111,7 @@ func TestGroup_NestedGroup(t *testing.T) {
 func TestGroup_PrefixRoot(t *testing.T) {
 	router := New(WithBasicRequestContext)
 
-	group := router.Group("/foo")
+	group := router.Namespace("/foo")
 	group.Get("/", func(ctx context.Context, r *RootRequestContext) {
 		r.Response().WriteHeader(http.StatusOK)
 	})

@@ -58,7 +58,11 @@ type (
 		// Group returns a new group based on this Routable. It will have its
 		// own middleware stack in addition to the middleware stack on the
 		// groups/router above it.
-		Group(prefix string) *Group[T]
+		Group() *Group[T]
+
+		// Namespace is like Group but accepts a prefix that will be included in
+		// the path of all routes registered with the group.
+		Namespace(prefix string) *Group[T]
 	}
 )
 
@@ -145,9 +149,15 @@ func (r *Router[T]) UseMetal(fn func(w http.ResponseWriter, r *http.Request, nex
 	r.metal = append(r.metal, fn)
 }
 
-// Group returns a new route group with the given prefix. The group can define
-// its own middleware that will only be run for that group.
-func (r *Router[T]) Group(prefix string) *Group[T] {
+// Group returns a new route group that can define its own middleware
+// that will only be run for that group.
+func (r *Router[T]) Group() *Group[T] {
+	return NewGroup[T](r, "")
+}
+
+// Namespace returns a new route group prefix. The group can define its own
+// middleware that will only be run for that group.
+func (r *Router[T]) Namespace(prefix string) *Group[T] {
 	return NewGroup[T](r, prefix)
 }
 
