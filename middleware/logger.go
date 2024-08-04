@@ -37,23 +37,31 @@ func Logger[ReqCtx fernet.RequestContext](logger *slog.Logger) func(context.Cont
 	return func(ctx context.Context, rctx ReqCtx, next fernet.Handler[ReqCtx]) {
 		start := time.Now()
 
-		logger.Info(
-			"request started",
+		startArgs := []any{
 			slog.String("path", rctx.Request().URL.Path),
 			slog.String("method", rctx.Request().Method),
 			slog.String("route", rctx.MatchedPath()),
-		)
+		}
+		if requestID, ok := RequestIDFromContext(ctx); ok {
+			startArgs = append(startArgs, slog.String("request_id", requestID))
+		}
+
+		logger.Info("request started", startArgs...)
 
 		next(ctx, rctx)
 		finished := time.Since(start)
 
-		logger.Info(
-			"request served",
+		servedArgs := []any{
 			slog.String("path", rctx.Request().URL.Path),
 			slog.String("method", rctx.Request().Method),
 			slog.String("route", rctx.MatchedPath()),
 			slog.Int("status", rctx.Response().Status()),
 			slog.Int64("ms", finished.Milliseconds()),
-		)
+		}
+		if requestID, ok := RequestIDFromContext(ctx); ok {
+			servedArgs = append(servedArgs, slog.String("request_id", requestID))
+		}
+
+		logger.Info("request served", servedArgs...)
 	}
 }
